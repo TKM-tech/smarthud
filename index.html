@@ -198,6 +198,13 @@ input[type=text], select {
 .ride-item button { grid-row: 1 / span 2; grid-column: 2; align-self: center; border: 1px solid var(--line); background: var(--surface2); border-radius: 10px; padding: 6px 10px; color: var(--bad); font-size: 12.5px; }
 #logBox { margin: 0; max-height: 180px; overflow: auto; background: var(--surface2); border-radius: 10px; padding: 10px; font-family: var(--font-num); font-size: 11.5px; white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left; }
 @media (prefers-reduced-motion: reduce) { .g-val, .tab-btn, .btn { transition: none; } }
+
+.ai-log { display: grid; gap: 6px; max-height: 240px; overflow: auto; }
+.ai-msg { padding: 8px 12px; border-radius: 12px; background: var(--surface2); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+.ai-msg.me { background: color-mix(in srgb, var(--accent) 22%, var(--surface2)); }
+.ai-row { display: flex; gap: 8px; }
+.ai-row input { flex: 1; }
+#aiKey { font-family: var(--font-num); }
 </style>
 </head>
 <body>
@@ -241,6 +248,17 @@ input[type=text], select {
     </div>
 
     <div class="card">
+      <h2>المساعد الذكي</h2>
+      <div class="ai-log" id="aiLog"></div>
+      <div class="ai-row">
+        <input type="text" id="aiIn" placeholder="مثال: سطوع 50 / وجّهني إلى محطة أمستردام / أرسل رسالة: أنا قادم" autocomplete="off" enterkeyhint="send">
+        <button class="btn" id="aiMic" aria-label="ميكروفون" hidden>🎤</button>
+        <button class="btn primary" id="aiGo">إرسال</button>
+      </div>
+      <div class="muted small" id="aiMode"></div>
+    </div>
+
+    <div class="card">
       <h2>إرسال رسالة للنظارة</h2>
       <div class="seg" data-seg="msgType" id="msgTypeSeg">
         <button data-v="2" aria-pressed="true">رسالة</button>
@@ -248,7 +266,7 @@ input[type=text], select {
         <button data-v="3" aria-pressed="false">معلومة</button>
         <button data-v="4" aria-pressed="false">تحذير</button>
       </div>
-      <input type="text" id="msgText" maxlength="44" placeholder="النص (إنجليزي أو هولندي، حتى 44 حرف)" autocomplete="off">
+      <input type="text" id="msgText" maxlength="90" placeholder="النص (عربي أو إنجليزي أو هولندي)" autocomplete="off">
       <button class="btn" id="btnMsg" disabled>إرسال</button>
       <div class="muted small">المتصفح ما بيقدر يقرأ إشعارات الهاتف، فتحويل الواتساب والمكالمات التلقائي مو متاح هون.</div>
     </div>
@@ -386,6 +404,14 @@ input[type=text], select {
       </div>
     </div>
     <div class="card">
+      <div class="field"><b>مفتاح AI (اختياري)</b>
+        <input type="password" id="aiKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+        <span class="muted small">بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com. الاستخدام على حسابك.</span>
+        <div class="btns"><button class="btn" id="aiKeySave">حفظ المفتاح</button><button class="btn danger" id="aiKeyDel">حذف المفتاح</button></div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="field"><b>المظهر</b>
         <div class="seg" id="themeSeg"><button data-v="auto">تلقائي</button><button data-v="dark">داكن</button><button data-v="light">فاتح</button></div></div>
       <button class="btn" id="btnInstall" hidden>تثبيت التطبيق</button>
@@ -506,6 +532,16 @@ const NLD = {
   'تم الحفظ': 'Bewaard', 'سجل الأحداث': 'Gebeurtenissenlog', 'نسخ': 'Kopieer', 'مسح': 'Wissen', 'تم النسخ': 'Gekopieerd',
   'المظهر': 'Weergave', 'تلقائي': 'Auto', 'داكن': 'Donker', 'فاتح': 'Licht', 'تثبيت التطبيق': 'App installeren',
   'تم حفظ الرحلة': 'Rit bewaard', 'السرعة العليا': 'Topsnelheid', 'يوم': 'd',
+  'المساعد الذكي': 'Slimme assistent', 'ميكروفون': 'Microfoon',
+  'مثال: سطوع 50 / وجّهني إلى محطة أمستردام / أرسل رسالة: أنا قادم': 'Bijv: helderheid 50 / navigeer naar Amsterdam Centraal / stuur bericht: ik ben er bijna',
+  'النص (عربي أو إنجليزي أو هولندي)': 'Tekst (Arabisch, Engels of Nederlands)',
+  'مفتاح AI (اختياري)': 'AI-sleutel (optioneel)', 'حفظ المفتاح': 'Sleutel bewaren', 'حذف المفتاح': 'Sleutel verwijderen',
+  'بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com. الاستخدام على حسابك.':
+    'Zonder sleutel begrijpt de assistent simpele commando\'s, ook offline. Met je eigen Anthropic-sleutel begrijpt hij elke zin. De sleutel blijft alleen in de browser van dit toestel en gaat alleen naar api.anthropic.com. Het gebruik komt op jouw rekening.',
+  'AI actief (Claude)': 'AI actief (Claude)', 'offline commando\'s': 'Offline commando\'s',
+  'ما فهمت الأمر': 'Dat heb ik niet begrepen. Probeer: helderheid 50, limiet 30, zoek mijn bril, stuur bericht …',
+  'تم': 'Gedaan', 'جاري التفكير…': 'Even denken…', 'تم حفظ المفتاح': 'Sleutel bewaard', 'تم حذف المفتاح': 'Sleutel verwijderd',
+  'النظارة غير متصلة': 'Bril niet verbonden', 'الأمر يحتاج اتصال بالنظارة': 'Verbind eerst met de bril',
   'وصلت إلى وجهتك 🎉': 'Je bent er! 🎉', 'وضع الهدوء': 'Stille modus',
   'وضع توفير البطارية (Eco)': 'Zuinige modus (Eco)', '🔔 دوّر على نظارتي': '🔔 Zoek mijn bril'
 };
@@ -738,6 +774,159 @@ function applyTheme() {
   root.style.setProperty('--accent-ink', light ? '#ffffff' : '#04141a');
   setSeg('#themeSeg', -1);
   $$('#themeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === m)));
+}
+
+
+/* ============================== Arabic popups (phone renders, glasses draw) ============================== */
+const ARABIC_RE = /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/;
+const BMP_W = 136, BMP_H = 22;
+function renderTextBitmap(text) {
+  const rtl = ARABIC_RE.test(text);
+  const cv = document.createElement('canvas'); cv.width = BMP_W; cv.height = BMP_H;
+  const x = cv.getContext('2d', { willReadFrequently: true });
+  const font = (px) => 'bold ' + px + 'px "IBM Plex Sans Arabic","Noto Sans Arabic","Noto Naskh Arabic",Tahoma,"Segoe UI",system-ui,sans-serif';
+  const wrap = (px) => {
+    x.font = font(px);
+    const words = text.trim().split(/\s+/); const lines = []; let cur = '';
+    for (const w of words) {
+      const t = cur ? cur + ' ' + w : w;
+      if (x.measureText(t).width <= BMP_W - 2 || !cur) cur = t; else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  };
+  let px = 13, lines = wrap(px);
+  if (lines.length > 2) { px = 11; lines = wrap(px); }
+  if (lines.length > 2) { lines = lines.slice(0, 2); lines[1] = lines[1].slice(0, Math.max(1, lines[1].length - 2)) + '…'; }
+  const h = lines.length === 1 ? 13 : BMP_H;
+  x.clearRect(0, 0, BMP_W, BMP_H);
+  x.font = font(px); x.fillStyle = '#fff'; x.textBaseline = 'middle';
+  x.direction = rtl ? 'rtl' : 'ltr'; x.textAlign = rtl ? 'right' : 'left';
+  lines.forEach((ln, i) => x.fillText(ln, rtl ? BMP_W - 1 : 1, (i + 0.5) * (h / lines.length) + 0.5));
+  const img = x.getImageData(0, 0, BMP_W, h).data;
+  const rb = Math.ceil(BMP_W / 8), out = new Uint8Array(rb * h);
+  for (let r = 0; r < h; r++) for (let c = 0; c < BMP_W; c++) {
+    if (img[(r * BMP_W + c) * 4 + 3] > 110) out[r * rb + (c >> 3)] |= 0x80 >> (c & 7);
+  }
+  return { w: BMP_W, h, bytes: out };
+}
+function sendBitmapNotif(type, text) {
+  const b = renderTextBitmap(text);
+  for (let off = 0; off < b.bytes.length; off += 40) {
+    const part = Array.from(b.bytes.subarray(off, off + 40));
+    enqueue('notif', ble.not, [0x20, type, b.w, b.h, off & 255, off >> 8].concat(part));
+  }
+}
+
+/* ============================== assistant ============================== */
+const aiHist = [];
+function aiSay(txt, me) {
+  const box = $('#aiLog'); const d = document.createElement('div');
+  d.className = 'ai-msg' + (me ? ' me' : ''); d.textContent = txt; box.appendChild(d);
+  while (box.children.length > 12) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+function needBle() { if (!ble.connected) { return false; } return true; }
+function actDo(a) {
+  const k = a.action; const v = a.value;
+  const n = Number(v);
+  switch (k) {
+    case 'brightness': setCfg('brightness', clamp(Math.round(n / 5) * 5, 5, 100)); return true;
+    case 'limit': setCfg('limit', clamp(Math.round(n), 0, 200)); return true;
+    case 'buzzer': setCfg('buzzer', !!v); return true;
+    case 'quiet': setCfg('quiet', !!v); return true;
+    case 'autonight': setCfg('autoNight', !!v); return true;
+    case 'eco': setCfg('eco', clamp(n | 0, 0, 2)); return true;
+    case 'theme': setCfg('theme', clamp(n | 0, 0, 5)); return true;
+    case 'page': setCfg('page', clamp(n | 0, 0, 6)); return true;
+    case 'glasses_lang': setCfg('lang', clamp(n | 0, 0, 3)); return true;
+    case 'find': sendCmd([0x15]); return true;
+    case 'beep': sendCmd([0x05, 1]); return true;
+    case 'sync_time': syncTime(); return true;
+    case 'reset_trip': sendCmd([0x0C]); return true;
+    case 'message': sendNotifAuto(a.kind || 2, String(a.text || '')); return true;
+    case 'ride_start': if (!ride.active) rideStart(); return true;
+    case 'ride_stop': rideStop(); return true;
+    case 'nav_stop': stopNav(); return true;
+    case 'navigate': navigateTo(String(a.query || '')); return true;
+    default: return false;
+  }
+}
+function sendNotifAuto(type, text) {
+  if (ARABIC_RE.test(text)) sendBitmapNotif(type, text); else sendNotif(type, text);
+}
+async function navigateTo(q) {
+  if (!q.trim()) return;
+  try {
+    const list = await searchPlaces(q);
+    if (!list.length) { aiSay(tx('لا نتائج')); return; }
+    const top = list[0];
+    setDestination(top.pos, top.name);
+    initMap(); if (map) map.setView(top.pos, 14);
+    aiSay(tx('الوجهة: ') + top.name);
+    showTab('nav');
+  } catch (e) { aiSay(tx('فشل البحث: ') + (e.message || e)); }
+}
+const NUM = /(\d{1,3})/;
+function localParse(t) {
+  const s = t.toLowerCase().trim(); const out = []; let m;
+  const num = () => { const x = NUM.exec(s); return x ? Number(x[1]) : null; };
+  if ((m = /^\s*(?:navigeer|route|ga|rij|navigate|drive|take me|وجّه|وجه|خذني|روح)(?:ني)?\s*(?:naar|to|الى|إلى|على)?\s+(.+)$/i.exec(t.trim())) && !/helder|limit|bericht/.test(s)) out.push({ action: 'navigate', query: m[1] });
+  else if (/(stuur|verstuur|bericht|send|message|ارسل|أرسل|رسالة)/.test(s) && (m = /(?:bericht|message|رسالة|stuur|send|ارسل|أرسل)\s*[:：]?\s*(.+)$/i.exec(t.trim()))) out.push({ action: 'message', kind: /bel|call|مكالمة|اتصال/.test(s) ? 1 : 2, text: m[1].replace(/^(?:bericht|message|رسالة)\s*[:：]?\s*/i, '') });
+  else if (/(zoek.*bril|waar.*bril|find.*glasses|دور.*نظار|وين.*نظار)/.test(s)) out.push({ action: 'find' });
+  else if (/(helder|bright|سطوع|اضاءة|إضاءة)/.test(s) && num() != null) out.push({ action: 'brightness', value: num() });
+  else if (/(limiet|limit|snelheidslimiet|حد)/.test(s)) out.push({ action: 'limit', value: /(uit|off|stop|معطل|الغ)/.test(s) ? 0 : num() });
+  else if (/(stil|quiet|هدوء|silent)/.test(s)) out.push({ action: 'quiet', value: !/(uit|off|اطفي|الغ)/.test(s) });
+  else if (/(geluid|buzzer|sound|صوت)/.test(s)) out.push({ action: 'buzzer', value: !/(uit|off|mute|اطفي|الغ|بدون)/.test(s) });
+  else if (/(eco|zuinig|توفير)/.test(s)) out.push({ action: 'eco', value: /(uit|off|اطفي)/.test(s) ? 0 : /(altijd|always|دائم)/.test(s) ? 2 : 1 });
+  else if (/(nacht|night|ليل)/.test(s)) out.push({ action: 'autonight', value: !/(uit|off|الغ)/.test(s) });
+  else if (/(tijd|sync|clock|وقت|ساعة)/.test(s)) out.push({ action: 'sync_time' });
+  else if (/(stop|einde|beëindig|انه|وقف).*(rit|ride|رحلة)/.test(s)) out.push({ action: 'ride_stop' });
+  else if (/(start|begin|ابدأ).*(rit|ride|رحلة)/.test(s)) out.push({ action: 'ride_start' });
+  else if (/(stop|annuleer|وقف).*(navig|route|ملاحة|مسار)|^(stop|وقف)$/.test(s)) out.push({ action: 'nav_stop' });
+  else if (/(reset|wis|صفر).*(trip|rit|رحلة)/.test(s)) out.push({ action: 'reset_trip' });
+  else if (/(test|piep|beep|اختبار)/.test(s)) out.push({ action: 'beep' });
+  return out;
+}
+const AI_SYSTEM = 'You control smart navigation glasses through an app. Reply ONLY with compact JSON: {"reply":"short answer in the user\'s language","actions":[...]}. Allowed actions (objects with "action"): ' +
+  'brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
+  'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
+  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}. ' +
+  'Use [] when no action fits and just answer in "reply". Never invent actions. Keep replies under 200 characters.';
+async function aiAsk(text) {
+  const key = store('hud.aikey');
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 25000);
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST', signal: ctl.signal,
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 400, system: AI_SYSTEM + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.',
+        messages: aiHist.concat([{ role: 'user', content: text }]) })
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+    const raw = (j.content && j.content[0] && j.content[0].text) || '{}';
+    const m = /\{[\s\S]*\}/.exec(raw);
+    const obj = JSON.parse(m ? m[0] : '{}');
+    aiHist.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify(obj) });
+    while (aiHist.length > 8) aiHist.shift();
+    return obj;
+  } finally { clearTimeout(to); }
+}
+async function aiRun(text) {
+  text = text.trim(); if (!text) return;
+  aiSay(text, true);
+  let obj;
+  if (store('hud.aikey')) {
+    aiSay(tx('جاري التفكير…'));
+    try { obj = await aiAsk(text); } catch (e) { $('#aiLog').lastChild.remove(); aiSay('AI: ' + (e && e.message ? e.message : e)); dlog('ai error: ' + (e && e.message)); obj = { actions: localParse(text) }; }
+    if (!$('#aiLog').lastChild.textContent.startsWith('AI:')) $('#aiLog').lastChild.remove();
+  } else obj = { actions: localParse(text) };
+  const acts = Array.isArray(obj.actions) ? obj.actions : [];
+  const needsBle = acts.some((a) => a.action !== 'navigate' && a.action !== 'ride_start' && a.action !== 'ride_stop' && a.action !== 'nav_stop');
+  if (needsBle && !ble.connected) { aiSay(tx('الأمر يحتاج اتصال بالنظارة')); return; }
+  let did = 0; acts.forEach((a) => { try { if (actDo(a)) did++; } catch (e) { dlog('action failed ' + e); } });
+  if (obj.reply) aiSay(String(obj.reply)); else if (did) aiSay(tx('تم')); else aiSay(tx('ما فهمت الأمر'));
 }
 
 /* ============================== BLE ============================== */
@@ -1386,7 +1575,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.2 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -1423,6 +1612,7 @@ function render() {
 
   renderRide();
   renderFavs();
+  $('#aiMode').textContent = store('hud.aikey') ? 'AI: Claude' : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
   if (nav.status !== lastNavSt) { lastNavSt = nav.status; if (nav.status) dlog('nav: ' + nav.status); }
@@ -1449,7 +1639,7 @@ function bind() {
   $('#btnMsg').addEventListener('click', () => {
     const t = $('#msgText').value.trim();
     if (!t) { toast(tx('اكتب نص الرسالة أولاً')); return; }
-    sendNotif(msgType, t); toast(tx('تم الإرسال للنظارة'));
+    sendNotifAuto(msgType, t); toast(tx('تم الإرسال للنظارة'));
   });
 
   $('#swTrack').addEventListener('change', (e) => { if (e.target.checked) startTracking(); else stopTracking(); });
@@ -1477,6 +1667,23 @@ function bind() {
   });
   $('#btnPick').addEventListener('click', () => setPick(!pickMode));
   $('#btnFav').addEventListener('click', saveFav);
+  const aiSend = () => { const i = $('#aiIn'); const v = i.value; i.value = ''; aiRun(v); };
+  $('#aiGo').addEventListener('click', aiSend);
+  $('#aiIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aiSend(); } });
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR) {
+    const mic = $('#aiMic'); mic.hidden = false;
+    mic.addEventListener('click', () => {
+      try {
+        const r = new SR(); r.lang = LANG === 'ar' ? 'ar-SA' : 'nl-NL'; r.interimResults = false; r.maxAlternatives = 1;
+        r.onresult = (ev) => { $('#aiIn').value = ev.results[0][0].transcript; aiSend(); };
+        r.onerror = () => { mic.textContent = '🎤'; }; r.onend = () => { mic.textContent = '🎤'; };
+        mic.textContent = '…'; r.start();
+      } catch (e) { toast(String(e)); }
+    });
+  }
+  $('#aiKeySave').addEventListener('click', () => { const v = $('#aiKey').value.trim(); if (v) { store('hud.aikey', v); $('#aiKey').value = ''; toast(tx('تم حفظ المفتاح')); schedule(); } });
+  $('#aiKeyDel').addEventListener('click', () => { try { localStorage.removeItem('hud.aikey'); } catch (e) { /* ignore */ } toast(tx('تم حذف المفتاح')); schedule(); });
   $('#rStart').addEventListener('click', rideStart);
   $('#rPause').addEventListener('click', ridePause);
   $('#rStop').addEventListener('click', rideStop);
