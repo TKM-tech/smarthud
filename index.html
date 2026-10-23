@@ -405,8 +405,9 @@ input[type=text], select {
     </div>
     <div class="card">
       <div class="field"><b>مفتاح AI (اختياري)</b>
-        <input type="password" id="aiKey" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
-        <span class="muted small">بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com. الاستخدام على حسابك.</span>
+        <input type="password" id="aiKey" placeholder="sk-or-... / sk-ant-..." autocomplete="off" spellcheck="false">
+        <input type="text" id="aiModel" placeholder="OpenRouter model, bv. meta-llama/llama-3.3-70b-instruct:free" autocomplete="off" spellcheck="false" style="direction:ltr">
+        <span class="muted small">بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com أو openrouter.ai حسب نوع المفتاح (sk-or- = OpenRouter). الاستخدام على حسابك.</span>
         <div class="btns"><button class="btn" id="aiKeySave">حفظ المفتاح</button><button class="btn danger" id="aiKeyDel">حذف المفتاح</button></div>
       </div>
     </div>
@@ -536,8 +537,8 @@ const NLD = {
   'مثال: سطوع 50 / وجّهني إلى محطة أمستردام / أرسل رسالة: أنا قادم': 'Bijv: helderheid 50 / navigeer naar Amsterdam Centraal / stuur bericht: ik ben er bijna',
   'النص (عربي أو إنجليزي أو هولندي)': 'Tekst (Arabisch, Engels of Nederlands)',
   'مفتاح AI (اختياري)': 'AI-sleutel (optioneel)', 'حفظ المفتاح': 'Sleutel bewaren', 'حذف المفتاح': 'Sleutel verwijderen',
-  'بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com. الاستخدام على حسابك.':
-    'Zonder sleutel begrijpt de assistent simpele commando\'s, ook offline. Met je eigen Anthropic-sleutel begrijpt hij elke zin. De sleutel blijft alleen in de browser van dit toestel en gaat alleen naar api.anthropic.com. Het gebruik komt op jouw rekening.',
+  'بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com أو openrouter.ai حسب نوع المفتاح (sk-or- = OpenRouter). الاستخدام على حسابك.':
+    'Zonder sleutel begrijpt de assistent simpele commando\'s, ook offline. Met je eigen Anthropic-sleutel begrijpt hij elke zin. De sleutel blijft alleen in de browser van dit toestel en gaat alleen naar api.anthropic.com of openrouter.ai, afhankelijk van de sleutel (sk-or- = OpenRouter). Het gebruik komt op jouw rekening.',
   'AI actief (Claude)': 'AI actief (Claude)', 'offline commando\'s': 'Offline commando\'s',
   'ما فهمت الأمر': 'Dat heb ik niet begrepen. Probeer: helderheid 50, limiet 30, zoek mijn bril, stuur bericht …',
   'تم': 'Gedaan', 'جاري التفكير…': 'Even denken…', 'تم حفظ المفتاح': 'Sleutel bewaard', 'تم حذف المفتاح': 'Sleutel verwijderd',
@@ -897,15 +898,30 @@ async function aiAsk(text) {
   const key = store('hud.aikey');
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 25000);
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST', signal: ctl.signal,
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 400, system: AI_SYSTEM + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.',
-        messages: aiHist.concat([{ role: 'user', content: text }]) })
-    });
-    const j = await res.json();
-    if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
-    const raw = (j.content && j.content[0] && j.content[0].text) || '{}';
+    const sys = AI_SYSTEM + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
+    const msgs = aiHist.concat([{ role: 'user', content: text }]);
+    const orKey = key.indexOf('sk-or-') === 0;
+    let res, j, raw;
+    if (orKey) {
+      res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST', signal: ctl.signal,
+        headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-Title': 'Smart HUD' },
+        body: JSON.stringify({ model: store('hud.aimodel') || 'meta-llama/llama-3.3-70b-instruct:free', max_tokens: 400, temperature: 0.2,
+          messages: [{ role: 'system', content: sys }].concat(msgs) })
+      });
+      j = await res.json();
+      if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+      raw = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '{}';
+    } else {
+      res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', signal: ctl.signal,
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 400, system: sys, messages: msgs })
+      });
+      j = await res.json();
+      if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
+      raw = (j.content && j.content[0] && j.content[0].text) || '{}';
+    }
     const m = /\{[\s\S]*\}/.exec(raw);
     const obj = JSON.parse(m ? m[0] : '{}');
     aiHist.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify(obj) });
@@ -1612,7 +1628,7 @@ function render() {
 
   renderRide();
   renderFavs();
-  $('#aiMode').textContent = store('hud.aikey') ? 'AI: Claude' : tx('offline commando\'s');
+  $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'meta-llama/llama-3.3-70b-instruct:free') : 'Claude') : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
   if (nav.status !== lastNavSt) { lastNavSt = nav.status; if (nav.status) dlog('nav: ' + nav.status); }
@@ -1682,7 +1698,8 @@ function bind() {
       } catch (e) { toast(String(e)); }
     });
   }
-  $('#aiKeySave').addEventListener('click', () => { const v = $('#aiKey').value.trim(); if (v) { store('hud.aikey', v); $('#aiKey').value = ''; toast(tx('تم حفظ المفتاح')); schedule(); } });
+  $('#aiKeySave').addEventListener('click', () => { const v = $('#aiKey').value.trim(); if (v) { store('hud.aikey', v); const mv = $('#aiModel').value.trim(); if (mv) store('hud.aimodel', mv); $('#aiKey').value = ''; toast(tx('تم حفظ المفتاح')); schedule(); } });
+  $('#aiModel').value = store('hud.aimodel') || '';
   $('#aiKeyDel').addEventListener('click', () => { try { localStorage.removeItem('hud.aikey'); } catch (e) { /* ignore */ } toast(tx('تم حذف المفتاح')); schedule(); });
   $('#rStart').addEventListener('click', rideStart);
   $('#rPause').addEventListener('click', ridePause);
