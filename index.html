@@ -96,7 +96,7 @@ main { max-width: 640px; margin: 0 auto; padding: 16px 0 calc(96px + env(safe-ar
   background: var(--surface); border-top: 1px solid var(--line);
   padding: 6px max(16px, env(safe-area-inset-left, 0px)) calc(6px + env(safe-area-inset-bottom, 0px));
 }
-.tabbar div { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.tabbar div { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .tab-btn {
   background: none; border: 0; border-radius: 12px; padding: 8px 4px;
   display: grid; justify-items: center; gap: 2px; color: var(--muted); font-size: 12px;
@@ -172,6 +172,32 @@ input[type=text], select {
   position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 12px; z-index: 50; max-width: 90vw; font-size: 14px;
 }
+
+/* ---- v1.1 additions ---- */
+.brand b { white-space: nowrap; }
+@media (max-width: 440px) { .brand span { display: none; } }
+.card { background: linear-gradient(180deg, color-mix(in srgb, var(--surface) 92%, var(--accent)) 0%, var(--surface) 70%); box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 6%, transparent) inset; }
+.tab-btn { transition: background .15s, color .15s; }
+.btn { transition: border-color .15s, transform .05s; }
+.btn:active { transform: scale(.98); }
+.gauge-card { justify-items: center; }
+#gauge { width: min(100%, 340px); height: auto; }
+.g-track { fill: none; stroke: var(--surface2); stroke-width: 14; stroke-linecap: round; }
+.g-val { fill: none; stroke: var(--accent); stroke-width: 14; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transition: stroke-dashoffset .35s ease, stroke .2s; }
+.g-lim { stroke: var(--warn); stroke-width: 3; stroke-linecap: round; }
+#gSpeed { font-family: var(--font-num); font-weight: 600; font-size: 52px; fill: var(--fg); text-anchor: middle; font-variant-numeric: tabular-nums; }
+#gUnit { font-size: 13px; fill: var(--muted); text-anchor: middle; }
+.stats6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface2); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; max-width: 100%; }
+.chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46vw; }
+.chip button { border: 0; background: none; color: var(--muted); padding: 0 2px; font-size: 16px; line-height: 1; }
+.ride-item { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 10px 0; border-top: 1px solid var(--line); }
+.ride-item:first-child { border-top: 0; }
+.ride-item .meta { grid-column: 1; color: var(--muted); font-size: 12.5px; }
+.ride-item button { grid-row: 1 / span 2; grid-column: 2; align-self: center; border: 1px solid var(--line); background: var(--surface2); border-radius: 10px; padding: 6px 10px; color: var(--bad); font-size: 12.5px; }
+#logBox { margin: 0; max-height: 180px; overflow: auto; background: var(--surface2); border-radius: 10px; padding: 10px; font-family: var(--font-num); font-size: 11.5px; white-space: pre-wrap; word-break: break-word; direction: ltr; text-align: left; }
+@media (prefers-reduced-motion: reduce) { .g-val, .tab-btn, .btn { transition: none; } }
 </style>
 </head>
 <body>
@@ -238,6 +264,38 @@ input[type=text], select {
     </div>
   </section>
 
+  <!-- ======================= RIDE ======================= -->
+  <section id="tab-ride" class="tabpane" aria-label="الرحلة" hidden style="gap:14px">
+    <div class="card gauge-card">
+      <svg id="gauge" viewBox="0 0 220 175" role="img" aria-label="السرعة">
+        <path class="g-track" d="M 53.43 156.57 A 80 80 0 1 1 166.57 156.57" pathLength="100"/>
+        <path class="g-val" id="gVal" d="M 53.43 156.57 A 80 80 0 1 1 166.57 156.57" pathLength="100"/>
+        <line class="g-lim" id="gLim" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/>
+        <text id="gSpeed" x="110" y="108">0</text>
+        <text id="gUnit" x="110" y="132">كم/س</text>
+      </svg>
+      <div class="stats6">
+        <div class="stat"><span>المسافة</span><b id="rDist">—</b></div>
+        <div class="stat"><span>المدة</span><b id="rTime">—</b></div>
+        <div class="stat"><span>الحالة</span><b id="rState" style="font-family:var(--font-ui);font-size:14px">—</b></div>
+        <div class="stat"><span>المعدل</span><b id="rAvg">—</b></div>
+        <div class="stat"><span>الأعلى</span><b id="rMax">—</b></div>
+        <div class="stat"><span>الصعود</span><b id="rClimb">—</b></div>
+      </div>
+      <div class="btns" style="width:100%">
+        <button class="btn primary" id="rStart">ابدأ الرحلة</button>
+        <button class="btn" id="rPause" disabled>إيقاف مؤقت</button>
+        <button class="btn danger" id="rStop" disabled>إنهاء وحفظ</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>سجل الرحلات</h2>
+      <div class="muted small" id="rTotals"></div>
+      <div id="rList"></div>
+      <button class="btn danger" id="rClear" hidden>مسح كل الرحلات</button>
+    </div>
+  </section>
+
   <!-- ======================= NAV ======================= -->
   <section id="tab-nav" class="tabpane" aria-label="الملاحة" hidden style="gap:14px">
     <div class="card">
@@ -249,7 +307,10 @@ input[type=text], select {
       <div class="btns">
         <button class="btn" id="btnMe">موقعي</button>
         <button class="btn" id="btnPick" aria-pressed="false">اختر من الخريطة</button>
+        <button class="btn" id="btnFav">⭐ حفظ الوجهة</button>
       </div>
+      <div class="chips" id="favChips"></div>
+      <div class="chips" id="recChips"></div>
     </div>
 
     <div id="map" role="application" aria-label="الخريطة"></div>
@@ -324,6 +385,17 @@ input[type=text], select {
         <button class="btn danger" id="btnOdo">تصفير العداد الكلي</button>
       </div>
     </div>
+    <div class="card">
+      <div class="field"><b>المظهر</b>
+        <div class="seg" id="themeSeg"><button data-v="auto">تلقائي</button><button data-v="dark">داكن</button><button data-v="light">فاتح</button></div></div>
+      <button class="btn" id="btnInstall" hidden>تثبيت التطبيق</button>
+    </div>
+
+    <div class="card">
+      <h2>سجل الأحداث</h2>
+      <pre id="logBox"></pre>
+      <div class="btns"><button class="btn" id="logCopy">نسخ</button><button class="btn" id="logClear">مسح</button></div>
+    </div>
     <div class="muted small" style="text-align:center" id="verLine">Smart HUD Web 1.0</div>
   </section>
 </main>
@@ -332,6 +404,8 @@ input[type=text], select {
   <div role="tablist">
     <button class="tab-btn" role="tab" data-tab="home" aria-selected="true">
       <svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>الرئيسية</button>
+    <button class="tab-btn" role="tab" data-tab="ride" aria-selected="false">
+      <svg viewBox="0 0 24 24"><path d="M4 18a8 8 0 1 1 16 0"/><path d="M12 18l4-6"/><circle cx="12" cy="18" r="1.2"/></svg>الرحلة</button>
     <button class="tab-btn" role="tab" data-tab="nav" aria-selected="false">
       <svg viewBox="0 0 24 24"><path d="M12 2l7 19-7-4-7 4z"/></svg>الملاحة</button>
     <button class="tab-btn" role="tab" data-tab="set" aria-selected="false">
@@ -424,6 +498,14 @@ const NLD = {
   'هذا المتصفح لا يدعم Web Bluetooth': 'Deze browser ondersteunt geen Web Bluetooth',
   'هذا المتصفح لا يدعم Web Bluetooth. استخدم Chrome أو Edge على أندرويد أو الكمبيوتر. على الآيفون استخدم تطبيق Bluefy.':
     'Deze browser ondersteunt geen Web Bluetooth. Gebruik Chrome of Edge op Android of computer. Op iPhone: de app Bluefy.',
+  'الرحلة': 'Rit', 'ابدأ الرحلة': 'Start rit', 'إيقاف مؤقت': 'Pauze', 'متابعة': 'Hervat', 'إنهاء وحفظ': 'Stop en bewaar',
+  'المدة': 'Duur', 'المعدل': 'Gemiddeld', 'الأعلى': 'Max', 'الصعود': 'Stijging', 'الحالة': 'Status',
+  'يسجّل': 'Opnemen', 'متوقف مؤقتاً': 'Gepauzeerd', 'جاهز': 'Klaar', 'سجل الرحلات': 'Ritgeschiedenis',
+  'لا توجد رحلات بعد': 'Nog geen ritten', 'حذف': 'Verwijder', 'المجموع:': 'Totaal:', 'رحلات': 'ritten',
+  'مسح كل الرحلات': 'Alle ritten wissen', 'حفظ الوجهة': 'Bewaar bestemming', '⭐ حفظ الوجهة': '⭐ Bewaar bestemming',
+  'تم الحفظ': 'Bewaard', 'سجل الأحداث': 'Gebeurtenissenlog', 'نسخ': 'Kopieer', 'مسح': 'Wissen', 'تم النسخ': 'Gekopieerd',
+  'المظهر': 'Weergave', 'تلقائي': 'Auto', 'داكن': 'Donker', 'فاتح': 'Licht', 'تثبيت التطبيق': 'App installeren',
+  'تم حفظ الرحلة': 'Rit bewaard', 'السرعة العليا': 'Topsnelheid', 'يوم': 'd',
   'وصلت إلى وجهتك 🎉': 'Je bent er! 🎉', 'وضع الهدوء': 'Stille modus',
   'وضع توفير البطارية (Eco)': 'Zuinige modus (Eco)', '🔔 دوّر على نظارتي': '🔔 Zoek mijn bril'
 };
@@ -467,7 +549,7 @@ function store(key, val) { try { if (val === undefined) return localStorage.getI
 let toastT = null;
 function toast(msg) {
   const t = $('#toast');
-  t.textContent = msg; t.hidden = false;
+  t.textContent = msg; t.hidden = false; if (typeof dlog === 'function') dlog('toast: ' + msg);
   clearTimeout(toastT);
   toastT = setTimeout(() => { t.hidden = true; }, 3200);
 }
@@ -478,6 +560,184 @@ function schedule() {
   if (rafPending) return;
   rafPending = true;
   requestAnimationFrame(() => { rafPending = false; render(); });
+}
+
+
+/* ============================== log ============================== */
+const LOG = [];
+function dlog(msg) {
+  const d = new Date();
+  const t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+  LOG.push(t + '  ' + msg);
+  if (LOG.length > 60) LOG.shift();
+}
+function jget(key, def) { try { const v = JSON.parse(store(key) || 'null'); return v == null ? def : v; } catch (e) { return def; } }
+function jset(key, val) { store(key, JSON.stringify(val)); }
+
+/* ============================== ride recorder ============================== */
+const ride = { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0 };
+let rides = jget('hud.rides', []);
+
+function rideReset() {
+  Object.assign(ride, { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0 });
+  store('hud.ride', '');
+}
+function rideElapsed() { return ride.accMs + (ride.active && !ride.paused && ride.lastT ? Date.now() - ride.lastT : 0); }
+function rideSnapshot() {
+  jset('hud.ride', { a: ride.active, p: ride.paused, t0: ride.t0, acc: rideElapsed(), mov: ride.movMs, d: ride.dist, m: ride.max, c: ride.climb });
+}
+function rideFix(p, speed, alt) {
+  if (!ride.active || ride.paused) { ride.lastP = null; return; }
+  const now = Date.now();
+  const dt = ride.lastT ? now - ride.lastT : 0;
+  if (ride.lastP) {
+    const d = haversine(ride.lastP[0], ride.lastP[1], p[0], p[1]);
+    if (speed > 0.8 || d > 6) { if (d < 400) ride.dist += d; ride.movMs += Math.min(dt, 5000); }
+  }
+  ride.lastP = p;
+  if (speed > ride.max && speed < 90) ride.max = speed;
+  if (alt != null && isFinite(alt)) {
+    if (ride.lastAlt != null && alt - ride.lastAlt >= 3) { ride.climb += alt - ride.lastAlt; ride.lastAlt = alt; }
+    else if (ride.lastAlt == null || ride.lastAlt - alt >= 3) ride.lastAlt = alt;
+  }
+  // accumulate wall-clock time while running
+  ride.accMs += dt; ride.lastT = now;
+  if (now - ride.lastSave > 10000) { ride.lastSave = now; rideSnapshot(); }
+}
+function rideStart() {
+  rideReset();
+  ride.active = true; ride.t0 = Date.now(); ride.lastT = Date.now();
+  if (!nav.tracking && !nav.navigating) startTracking();
+  dlog('ride start');
+  schedule();
+}
+function ridePause() {
+  if (!ride.active) return;
+  if (!ride.paused) { ride.accMs = rideElapsed(); ride.paused = true; ride.lastT = 0; }
+  else { ride.paused = false; ride.lastT = Date.now(); ride.lastP = null; }
+  rideSnapshot(); schedule();
+}
+function rideStop() {
+  if (!ride.active) return;
+  const dur = rideElapsed();
+  if (ride.dist >= 30 || dur >= 60000) {
+    rides.unshift({ t: ride.t0, dur, mov: ride.movMs, d: Math.round(ride.dist), max: ride.max, c: Math.round(ride.climb) });
+    rides = rides.slice(0, 30); jset('hud.rides', rides);
+    toast(tx('تم حفظ الرحلة'));
+  }
+  rideReset();
+  if (!nav.navigating) stopTracking();
+  dlog('ride stop'); schedule();
+}
+function fmtDist(m) { return m >= 1000 ? (m / 1000).toFixed(2) + ' km' : Math.round(m) + ' m'; }
+function fmtDur(ms) {
+  const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t % 3600 / 60), sec = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(sec).padStart(2, '0');
+}
+const kmh = (mps) => Math.round(mps * 3.6);
+
+function renderRide() {
+  const v = kmh(nav.speedMps);
+  const c = ble.cfg;
+  const scale = c.vehicle === 0 ? 50 : 180;
+  const frac = clamp(v / scale, 0, 1);
+  const gv = $('#gVal');
+  gv.style.strokeDashoffset = String(100 - frac * 100);
+  gv.style.opacity = v < 1 ? '0' : '1';
+  gv.style.stroke = c.limit && v > c.limit ? 'var(--bad)' : 'var(--accent)';
+  $('#gSpeed').textContent = String(v);
+  $('#gUnit').textContent = tx('كم/س');
+  const lim = $('#gLim');
+  if (c.limit && c.limit <= scale) {
+    const a = (135 + 270 * (c.limit / scale)) * Math.PI / 180;
+    lim.setAttribute('x1', (110 + 68 * Math.cos(a)).toFixed(1)); lim.setAttribute('y1', (100 + 68 * Math.sin(a)).toFixed(1));
+    lim.setAttribute('x2', (110 + 92 * Math.cos(a)).toFixed(1)); lim.setAttribute('y2', (100 + 92 * Math.sin(a)).toFixed(1));
+    lim.setAttribute('visibility', 'visible');
+  } else lim.setAttribute('visibility', 'hidden');
+  const el = rideElapsed();
+  const avg = ride.movMs > 5000 ? Math.min(ride.dist / (ride.movMs / 1000), ride.max || 99) : 0;
+  $('#rDist').textContent = ride.active ? fmtDist(ride.dist) : '—';
+  $('#rTime').textContent = ride.active ? fmtDur(el) : '—';
+  $('#rState').textContent = !ride.active ? tx('جاهز') : ride.paused ? tx('متوقف مؤقتاً') : tx('يسجّل');
+  $('#rAvg').textContent = ride.active ? kmh(avg) + ' ' + tx('كم/س') : '—';
+  $('#rMax').textContent = ride.active ? kmh(ride.max) + ' ' + tx('كم/س') : '—';
+  $('#rClimb').textContent = ride.active ? Math.round(ride.climb) + ' m' : '—';
+  $('#rStart').disabled = ride.active;
+  $('#rPause').disabled = !ride.active;
+  $('#rPause').textContent = ride.paused ? tx('متابعة') : tx('إيقاف مؤقت');
+  $('#rStop').disabled = !ride.active;
+
+  const list = $('#rList');
+  const key = JSON.stringify(rides) + LANG;
+  if (list.dataset.k !== key) {
+    list.dataset.k = key;
+    list.textContent = '';
+    if (!rides.length) { const e = document.createElement('div'); e.className = 'muted small'; e.textContent = tx('لا توجد رحلات بعد'); list.appendChild(e); }
+    rides.forEach((r, i) => {
+      const it = document.createElement('div'); it.className = 'ride-item';
+      const a = document.createElement('div'); a.className = 'num';
+      a.textContent = fmtDist(r.d) + ' · ' + fmtDur(r.dur);
+      const m = document.createElement('div'); m.className = 'meta';
+      const dt = new Date(r.t).toLocaleString(LANG === 'ar' ? 'ar' : 'nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+      const av = r.mov > 5000 ? kmh(Math.min(r.d / (r.mov / 1000), r.max || 99)) : 0;
+      m.textContent = dt + ' · ' + tx('المعدل') + ' ' + av + ' · ' + tx('الأعلى') + ' ' + kmh(r.max) + ' ' + tx('كم/س') + ' · ↑' + r.c + ' m';
+      const b = document.createElement('button'); b.textContent = tx('حذف');
+      b.addEventListener('click', () => { rides.splice(i, 1); jset('hud.rides', rides); schedule(); });
+      it.append(a, m, b); list.appendChild(it);
+    });
+  }
+  const tot = rides.reduce((a, r) => a + r.d, 0);
+  $('#rTotals').textContent = rides.length ? tx('المجموع:') + ' ' + fmtDist(tot) + ' · ' + rides.length + ' ' + tx('رحلات') : '';
+  $('#rClear').hidden = !rides.length;
+}
+
+/* ============================== favorites ============================== */
+let favs = jget('hud.favs', []);
+let recents = jget('hud.recents', []);
+function chipRow(box, items, onPick, onDel, prefix) {
+  box.textContent = '';
+  items.forEach((it, i) => {
+    const ch = document.createElement('div'); ch.className = 'chip';
+    const sp = document.createElement('span'); sp.textContent = prefix + it.n; sp.style.cursor = 'pointer';
+    sp.addEventListener('click', () => onPick(it));
+    ch.appendChild(sp);
+    if (onDel) { const x = document.createElement('button'); x.textContent = '×'; x.setAttribute('aria-label', tx('حذف')); x.addEventListener('click', () => onDel(i)); ch.appendChild(x); }
+    box.appendChild(ch);
+  });
+}
+function pickPlace(it) {
+  setDestination(it.p, it.n);
+  initMap(); if (map) map.setView(it.p, 14);
+}
+function renderFavs() {
+  chipRow($('#favChips'), favs, pickPlace, (i) => { favs.splice(i, 1); jset('hud.favs', favs); schedule(); }, '⭐ ');
+  chipRow($('#recChips'), recents, pickPlace, null, '🕘 ');
+}
+function addRecent() {
+  if (!nav.dest) return;
+  const it = { n: nav.destName, p: nav.dest };
+  recents = [it].concat(recents.filter((r) => Math.abs(r.p[0] - it.p[0]) + Math.abs(r.p[1] - it.p[1]) > 0.0005)).slice(0, 5);
+  jset('hud.recents', recents);
+}
+function saveFav() {
+  if (!nav.dest) { toast(tx('اختر وجهة أولاً')); return; }
+  if (!favs.some((f) => Math.abs(f.p[0] - nav.dest[0]) + Math.abs(f.p[1] - nav.dest[1]) < 0.0005)) {
+    favs.unshift({ n: nav.destName, p: nav.dest }); favs = favs.slice(0, 8); jset('hud.favs', favs);
+  }
+  toast(tx('تم الحفظ')); schedule();
+}
+
+/* ============================== appearance ============================== */
+function applyTheme() {
+  const m = store('hud.theme') || 'auto';
+  const root = document.documentElement;
+  if (m === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', m);
+  const light = m === 'light' || (m === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  const th = THEMES[clamp(ble.cfg.theme, 0, THEMES.length - 1)];
+  root.style.setProperty('--accent', light ? th.l : th.a);
+  root.style.setProperty('--accent-ink', light ? '#ffffff' : '#04141a');
+  setSeg('#themeSeg', -1);
+  $$('#themeSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === m)));
 }
 
 /* ============================== BLE ============================== */
@@ -508,7 +768,7 @@ async function pump() {
   try {
     while (ble.q.length) {
       const t = ble.q.shift();
-      try { await writeChar(t.ch, t.data, t.kind === 'nav'); } catch (e) { console.warn('BLE write failed', e); }
+      try { await writeChar(t.ch, t.data, t.kind === 'nav'); } catch (e) { console.warn('BLE write failed', e); dlog('BLE write failed: ' + (e && e.message)); }
     }
   } finally { ble.pumping = false; }
 }
@@ -777,6 +1037,7 @@ function sendGps(heading, alt) {
 function onPosition(p, speed, heading, alt) {
   nav.pos = p;
   nav.speedMps = (!isFinite(speed) || speed < 0) ? 0 : speed;
+  rideFix(p, nav.speedMps, alt);
   sendGps(heading, alt);
   const r = nav.route;
   if (!nav.navigating || !r) { sendNav(0, 0, 0xFFFF, 0, ''); schedule(); mapUpdate(); return; }
@@ -849,6 +1110,7 @@ function onFix(pos) {
 }
 
 function onGeoError(err) {
+  dlog('geo error ' + err.code + ': ' + err.message);
   nav.status = err.code === 1 ? tx('صلاحية الموقع مرفوضة. فعّلها من إعدادات المتصفح') : tx('تعذر تحديد الموقع (تأكد من تشغيل GPS)');
   nav.tracking = false;
   schedule();
@@ -915,6 +1177,7 @@ async function startNavigation() {
   resetEngine();
   if (!(await buildRoute(false))) return;
   nav.navigating = true;
+  addRecent();
   nav.status = tx('الملاحة شغّالة');
   startStream();
   schedule();
@@ -1094,7 +1357,7 @@ function drawIcon(x, man, extra, cx, cy, col) {
 }
 
 /* ============================== UI binding ============================== */
-const tabs = ['home', 'nav', 'set'];
+const tabs = ['home', 'ride', 'nav', 'set'];
 function showTab(name) {
   for (const t of tabs) {
     const pane = $('#tab-' + t);
@@ -1123,7 +1386,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -1158,8 +1421,16 @@ function render() {
   $('#navEta').textContent = nav.navigating && nav.last.eta !== 0xFFFF ? nav.last.eta + tx(' د') : '—';
   $('#navStatus').textContent = nav.status;
 
+  renderRide();
+  renderFavs();
+  applyTheme();
+  if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
+  if (nav.status !== lastNavSt) { lastNavSt = nav.status; if (nav.status) dlog('nav: ' + nav.status); }
+  const lb = $('#logBox'); const lt = LOG.join('\n');
+  if (lb.textContent !== lt) { lb.textContent = lt; lb.scrollTop = lb.scrollHeight; }
   drawPreview();
 }
+let lastBleSt = '', lastNavSt = '';
 
 function bind() {
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
@@ -1205,6 +1476,20 @@ function bind() {
     catch (e) { toast(e.message); }
   });
   $('#btnPick').addEventListener('click', () => setPick(!pickMode));
+  $('#btnFav').addEventListener('click', saveFav);
+  $('#rStart').addEventListener('click', rideStart);
+  $('#rPause').addEventListener('click', ridePause);
+  $('#rStop').addEventListener('click', rideStop);
+  $('#rClear').addEventListener('click', () => { rides = []; jset('hud.rides', rides); schedule(); });
+  $('#themeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; store('hud.theme', b.dataset.v); schedule(); });
+  $('#logClear').addEventListener('click', () => { LOG.length = 0; schedule(); });
+  $('#logCopy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(LOG.join('\n')); toast(tx('تم النسخ')); } catch (e) { toast(LOG.slice(-1)[0] || ''); }
+  });
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); const bi = $('#btnInstall'); bi.hidden = false;
+    bi.onclick = () => { e.prompt(); bi.hidden = true; };
+  });
   $('#profileSeg').addEventListener('click', (e) => {
     const b = e.target.closest('button'); if (!b || b.disabled) return;
     nav.profile = Number(b.dataset.v); store('hud.profile', String(nav.profile)); schedule();
@@ -1275,6 +1560,11 @@ function boot() {
     applyLang(); updateCompat(); render();
   });
   applyLang(); updateCompat();
+  const sr = jget('hud.ride', null);
+  if (sr && sr.a) {
+    Object.assign(ride, { active: true, paused: true, t0: sr.t0, accMs: sr.acc, movMs: sr.mov, dist: sr.d, max: sr.m, climb: sr.c });
+  }
+  setInterval(() => { if (ride.active && !ride.paused && !document.hidden) schedule(); }, 1000);
   showTab('home');
   render();
   tryAutoReconnect();
