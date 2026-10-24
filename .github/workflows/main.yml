@@ -1,0 +1,1410 @@
+# Smart HUD - builds the Android APK for you (free, on GitHub). No Android Studio needed.
+# How: Actions tab -> "set up a workflow yourself" -> paste this whole file -> Commit.
+# Then: Actions -> "Build Android APK" -> wait ~5 min -> open "Releases" on the repo home page and download SmartHUD.apk
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'index.html'
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Create Android project
+        run: |
+          set -e
+          mkdir -p android/app/src/main/assets android/app/src/main/res/mipmap-xxhdpi
+          cp index.html sw.js manifest.webmanifest icon-192.png icon-512.png icon-maskable-512.png android/app/src/main/assets/
+          cp icon-192.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+          cat > android/settings.gradle <<'WF_EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = 'SmartHUD'
+          include ':app'
+          WF_EOF
+
+          cat > android/build.gradle <<'WF_EOF'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          WF_EOF
+
+          cat > android/gradle.properties <<'WF_EOF'
+          org.gradle.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
+          android.useAndroidX=false
+          android.nonTransitiveRClass=true
+          WF_EOF
+          mkdir -p "android/app"
+          cat > android/app/build.gradle <<'WF_EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.smarthud.glasses'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId 'com.smarthud.glasses'
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 160
+                  versionName '1.6.0'
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              lint {
+                  abortOnError false
+              }
+          }
+          WF_EOF
+          mkdir -p "android/app/src/main"
+          cat > android/app/src/main/AndroidManifest.xml <<'WF_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+              <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+              <uses-permission android:name="android.permission.BLUETOOTH_SCAN" android:usesPermissionFlags="neverForLocation" />
+              <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+              <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+              <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+              <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+              <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+              <uses-feature android:name="android.hardware.microphone" android:required="false" />
+
+              <queries>
+                  <intent>
+                      <action android:name="android.speech.RecognitionService" />
+                  </intent>
+              </queries>
+
+              <application
+                  android:label="Smart HUD"
+                  android:icon="@mipmap/ic_launcher"
+                  android:theme="@style/AppTheme"
+                  android:allowBackup="false"
+                  android:usesCleartextTraffic="false">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTask"
+                      android:windowSoftInputMode="adjustResize"
+                      android:configChanges="orientation|screenSize|keyboardHidden|keyboard|screenLayout|smallestScreenSize|uiMode|density|layoutDirection|locale">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <service
+                      android:name=".NotifService"
+                      android:exported="true"
+                      android:label="Smart HUD"
+                      android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+                      <intent-filter>
+                          <action android:name="android.service.notification.NotificationListenerService" />
+                      </intent-filter>
+                  </service>
+
+                  <service
+                      android:name=".KeepAliveService"
+                      android:exported="false"
+                      android:foregroundServiceType="connectedDevice|location" />
+              </application>
+          </manifest>
+          WF_EOF
+          mkdir -p "android/app/src/main/res/values"
+          cat > android/app/src/main/res/values/styles.xml <<'WF_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:Theme.DeviceDefault.NoActionBar">
+                  <item name="android:windowBackground">@color/bg</item>
+                  <item name="android:statusBarColor">@color/bg</item>
+                  <item name="android:navigationBarColor">@color/bg</item>
+              </style>
+          </resources>
+          WF_EOF
+          mkdir -p "android/app/src/main/res/values"
+          cat > android/app/src/main/res/values/colors.xml <<'WF_EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="bg">#0a0f1a</color>
+          </resources>
+          WF_EOF
+          mkdir -p "android/app/src/main/java/com/smarthud/glasses"
+          cat > android/app/src/main/java/com/smarthud/glasses/BleBridge.java <<'WF_EOF'
+          package com.smarthud.glasses;
+
+          import android.annotation.SuppressLint;
+          import android.bluetooth.BluetoothAdapter;
+          import android.bluetooth.BluetoothDevice;
+          import android.bluetooth.BluetoothGatt;
+          import android.bluetooth.BluetoothGattCallback;
+          import android.bluetooth.BluetoothGattCharacteristic;
+          import android.bluetooth.BluetoothGattDescriptor;
+          import android.bluetooth.BluetoothGattService;
+          import android.bluetooth.BluetoothManager;
+          import android.bluetooth.BluetoothStatusCodes;
+          import android.bluetooth.le.BluetoothLeScanner;
+          import android.bluetooth.le.ScanCallback;
+          import android.bluetooth.le.ScanRecord;
+          import android.bluetooth.le.ScanResult;
+          import android.bluetooth.le.ScanSettings;
+          import android.content.Context;
+          import android.os.Build;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.os.ParcelUuid;
+          import android.util.Base64;
+          import android.webkit.JavascriptInterface;
+
+          import org.json.JSONObject;
+
+          import java.util.ArrayDeque;
+          import java.util.UUID;
+
+          /**
+           * Minimal native BLE client exposed to the page as window.AndroidBLE.
+           * The page ships a small "navigator.bluetooth" shim on top of it, so the web app code is unchanged.
+           */
+          @SuppressLint("MissingPermission")
+          @SuppressWarnings("deprecation")
+          public class BleBridge {
+
+              public interface Js {
+                  void eval(String script);
+              }
+
+              private static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
+              private static class Op {
+                  int id;
+                  int type;               // 0 read, 1 write, 2 notify
+                  BluetoothGattCharacteristic ch;
+                  byte[] data;
+                  boolean resp;
+                  int tries;
+                  Runnable timeout;
+              }
+
+              private final Context ctx;
+              private final Js js;
+              private final Handler main = new Handler(Looper.getMainLooper());
+              private final Object lock = new Object();
+              private final ArrayDeque<Op> queue = new ArrayDeque<>();
+              private Op cur;
+              private BluetoothGatt gatt;
+              private boolean linked;
+              private boolean discovering;
+              private int connectId = -1;
+              private Runnable connectTimeout;
+              private int scanId = -1;
+              private ScanCallback scanCb;
+              private Runnable scanTimeout;
+
+              private final Runnable pumpTask = new Runnable() {
+                  @Override
+                  public void run() {
+                      synchronized (lock) {
+                          pump();
+                      }
+                  }
+              };
+
+              public BleBridge(Context ctx, Js js) {
+                  this.ctx = ctx;
+                  this.js = js;
+              }
+
+              // ------------------------------------------------------------------ JS entry point
+
+              @JavascriptInterface
+              public void call(int id, String method, String args) {
+                  try {
+                      JSONObject o = new JSONObject(args == null || args.isEmpty() ? "{}" : args);
+                      switch (method) {
+                          case "on":
+                              resolve(id, isOn() ? "1" : "0");
+                              break;
+                          case "scan":
+                              scan(id, o);
+                              break;
+                          case "connect":
+                              connect(id, o.getString("a"));
+                              break;
+                          case "disconnect":
+                              disconnect(id);
+                              break;
+                          case "has":
+                              has(id, o);
+                              break;
+                          case "read":
+                          case "write":
+                          case "notify":
+                              gattOp(id, method, o);
+                              break;
+                          default:
+                              reject(id, "unknown method " + method);
+                      }
+                  } catch (Throwable t) {
+                      String m = t.getMessage();
+                      reject(id, m == null ? t.toString() : m);
+                  }
+              }
+
+              // ------------------------------------------------------------------ helpers
+
+              private void resolve(int id, String data) {
+                  js.eval("window.__bleCb&&window.__bleCb(" + id + ",true," + JSONObject.quote(data == null ? "" : data) + ")");
+              }
+
+              private void reject(int id, String msg) {
+                  js.eval("window.__bleCb&&window.__bleCb(" + id + ",false," + JSONObject.quote(msg == null ? "error" : msg) + ")");
+              }
+
+              private void event(String type, String a, String b) {
+                  js.eval("window.__bleEvt&&window.__bleEvt(" + JSONObject.quote(type) + "," + JSONObject.quote(a) + "," + JSONObject.quote(b) + ")");
+              }
+
+              private BluetoothAdapter adapter() {
+                  BluetoothManager m = (BluetoothManager) ctx.getSystemService(Context.BLUETOOTH_SERVICE);
+                  return m == null ? null : m.getAdapter();
+              }
+
+              private boolean isOn() {
+                  BluetoothAdapter ad = adapter();
+                  return ad != null && ad.isEnabled();
+              }
+
+              // ------------------------------------------------------------------ scan
+
+              private void stopScan() {   // lock held
+                  if (scanCb != null) {
+                      try {
+                          BluetoothAdapter ad = adapter();
+                          BluetoothLeScanner sc = ad == null ? null : ad.getBluetoothLeScanner();
+                          if (sc != null) sc.stopScan(scanCb);
+                      } catch (Throwable t) {
+                          // ignore
+                      }
+                      scanCb = null;
+                  }
+                  if (scanTimeout != null) {
+                      main.removeCallbacks(scanTimeout);
+                      scanTimeout = null;
+                  }
+                  scanId = -1;
+              }
+
+              private void scan(final int id, JSONObject o) throws Exception {
+                  BluetoothAdapter ad = adapter();
+                  if (ad == null || !ad.isEnabled()) {
+                      reject(id, "Bluetooth is off");
+                      return;
+                  }
+                  BluetoothLeScanner sc = ad.getBluetoothLeScanner();
+                  if (sc == null) {
+                      reject(id, "Bluetooth scanner unavailable");
+                      return;
+                  }
+                  String s = o.optString("s", "");
+                  final UUID svc = s.isEmpty() ? null : UUID.fromString(s);
+                  final String prefix = o.optString("n", "");
+                  synchronized (lock) {
+                      stopScan();
+                      scanId = id;
+                      scanCb = new ScanCallback() {
+                          @Override
+                          public void onScanResult(int callbackType, ScanResult r) {
+                              synchronized (lock) {
+                                  if (scanId != id) return;
+                                  BluetoothDevice d = r.getDevice();
+                                  ScanRecord rec = r.getScanRecord();
+                                  String n = null;
+                                  try {
+                                      n = d.getName();
+                                  } catch (Throwable t) {
+                                      // ignore
+                                  }
+                                  if (n == null && rec != null) n = rec.getDeviceName();
+                                  boolean m = n != null && prefix.length() > 0 && n.startsWith(prefix);
+                                  if (!m && svc != null && rec != null && rec.getServiceUuids() != null) {
+                                      for (ParcelUuid p : rec.getServiceUuids()) {
+                                          if (svc.equals(p.getUuid())) m = true;
+                                      }
+                                  }
+                                  if (!m) return;
+                                  stopScan();
+                                  try {
+                                      JSONObject out = new JSONObject();
+                                      out.put("id", d.getAddress());
+                                      out.put("name", n == null ? prefix : n);
+                                      resolve(id, out.toString());
+                                  } catch (Throwable t) {
+                                      reject(id, "scan error");
+                                  }
+                              }
+                          }
+
+                          @Override
+                          public void onScanFailed(int errorCode) {
+                              synchronized (lock) {
+                                  if (scanId == id) {
+                                      stopScan();
+                                      reject(id, "scan failed " + errorCode);
+                                  }
+                              }
+                          }
+                      };
+                      sc.startScan(null, new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build(), scanCb);
+                      scanTimeout = new Runnable() {
+                          @Override
+                          public void run() {
+                              synchronized (lock) {
+                                  if (scanId == id) {
+                                      stopScan();
+                                      reject(id, "NotFound: no glasses found nearby");
+                                  }
+                              }
+                          }
+                      };
+                      main.postDelayed(scanTimeout, 12000);
+                  }
+              }
+
+              // ------------------------------------------------------------------ connect / disconnect
+
+              private void failAll(String msg) {   // lock held
+                  for (Op op : queue) reject(op.id, msg);
+                  queue.clear();
+                  if (cur != null) {
+                      if (cur.timeout != null) main.removeCallbacks(cur.timeout);
+                      reject(cur.id, msg);
+                      cur = null;
+                  }
+              }
+
+              private void closeGatt() {   // lock held
+                  failAll("disconnected");
+                  if (gatt != null) {
+                      try {
+                          gatt.disconnect();
+                      } catch (Throwable t) {
+                          // ignore
+                      }
+                      try {
+                          gatt.close();
+                      } catch (Throwable t) {
+                          // ignore
+                      }
+                      gatt = null;
+                  }
+                  linked = false;
+                  discovering = false;
+              }
+
+              private void connect(final int id, String addr) {
+                  BluetoothAdapter ad = adapter();
+                  if (ad == null || !ad.isEnabled()) {
+                      reject(id, "Bluetooth is off");
+                      return;
+                  }
+                  synchronized (lock) {
+                      stopScan();
+                      if (connectTimeout != null) main.removeCallbacks(connectTimeout);
+                      closeGatt();
+                      BluetoothDevice d = ad.getRemoteDevice(addr);
+                      connectId = id;
+                      gatt = d.connectGatt(ctx, false, cb, BluetoothDevice.TRANSPORT_LE);
+                      if (gatt == null) {
+                          connectId = -1;
+                          reject(id, "connectGatt failed");
+                          return;
+                      }
+                      connectTimeout = new Runnable() {
+                          @Override
+                          public void run() {
+                              synchronized (lock) {
+                                  if (connectId == id) {
+                                      connectId = -1;
+                                      closeGatt();
+                                      reject(id, "connection timeout");
+                                  }
+                              }
+                          }
+                      };
+                      main.postDelayed(connectTimeout, 20000);
+                  }
+              }
+
+              private void disconnect(int id) {
+                  synchronized (lock) {
+                      if (gatt != null) {
+                          try {
+                              gatt.disconnect();
+                          } catch (Throwable t) {
+                              // ignore
+                          }
+                      }
+                  }
+                  resolve(id, "");
+              }
+
+              private void discover(BluetoothGatt g) {   // lock held
+                  if (discovering) return;
+                  discovering = true;
+                  boolean ok = false;
+                  try {
+                      ok = g.discoverServices();
+                  } catch (Throwable t) {
+                      // ignore
+                  }
+                  if (!ok && connectId >= 0) {
+                      int cid = connectId;
+                      connectId = -1;
+                      closeGatt();
+                      reject(cid, "service discovery failed");
+                  }
+              }
+
+              private void has(int id, JSONObject o) throws Exception {
+                  synchronized (lock) {
+                      if (gatt == null || !linked) {
+                          reject(id, "Not connected");
+                          return;
+                      }
+                      BluetoothGattService s = gatt.getService(UUID.fromString(o.getString("s")));
+                      if (s == null) {
+                          reject(id, "NotFound: service");
+                          return;
+                      }
+                      String c = o.optString("c", "");
+                      if (!c.isEmpty() && s.getCharacteristic(UUID.fromString(c)) == null) {
+                          reject(id, "NotFound: characteristic");
+                          return;
+                      }
+                      resolve(id, "");
+                  }
+              }
+
+              // ------------------------------------------------------------------ GATT operation queue
+
+              private void gattOp(int id, String method, JSONObject o) throws Exception {
+                  synchronized (lock) {
+                      if (gatt == null || !linked) {
+                          reject(id, "Not connected");
+                          return;
+                      }
+                      BluetoothGattService s = gatt.getService(UUID.fromString(o.getString("s")));
+                      BluetoothGattCharacteristic c = s == null ? null : s.getCharacteristic(UUID.fromString(o.getString("c")));
+                      if (c == null) {
+                          reject(id, "NotFound: characteristic");
+                          return;
+                      }
+                      Op op = new Op();
+                      op.id = id;
+                      op.ch = c;
+                      if (method.equals("read")) {
+                          op.type = 0;
+                      } else if (method.equals("write")) {
+                          op.type = 1;
+                          op.data = Base64.decode(o.getString("v"), Base64.NO_WRAP);
+                          op.resp = o.optInt("r", 1) == 1;
+                      } else {
+                          op.type = 2;
+                      }
+                      queue.add(op);
+                      pump();
+                  }
+              }
+
+              /** 0 = failed, 1 = started (wait for callback), 2 = already done */
+              private int startOp(Op op) {
+                  try {
+                      BluetoothGattCharacteristic c = op.ch;
+                      if (op.type == 0) return gatt.readCharacteristic(c) ? 1 : 0;
+                      if (op.type == 1) {
+                          int wt = op.resp ? BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT : BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE;
+                          if (Build.VERSION.SDK_INT >= 33) {
+                              return gatt.writeCharacteristic(c, op.data, wt) == BluetoothStatusCodes.SUCCESS ? 1 : 0;
+                          }
+                          c.setWriteType(wt);
+                          c.setValue(op.data);
+                          return gatt.writeCharacteristic(c) ? 1 : 0;
+                      }
+                      gatt.setCharacteristicNotification(c, true);
+                      BluetoothGattDescriptor d = c.getDescriptor(CCCD);
+                      if (d == null) return 2;
+                      byte[] v = (c.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0
+                              ? BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                              : BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                      if (Build.VERSION.SDK_INT >= 33) {
+                          return gatt.writeDescriptor(d, v) == BluetoothStatusCodes.SUCCESS ? 1 : 0;
+                      }
+                      d.setValue(v);
+                      return gatt.writeDescriptor(d) ? 1 : 0;
+                  } catch (Throwable t) {
+                      return 0;
+                  }
+              }
+
+              private void pump() {   // lock held
+                  while (cur == null && !queue.isEmpty() && gatt != null) {
+                      final Op op = queue.poll();
+                      int r = startOp(op);
+                      if (r == 0) {
+                          if (op.type == 1 && ++op.tries < 10) {      // stack busy: try again shortly
+                              queue.addFirst(op);
+                              main.postDelayed(pumpTask, 20);
+                              return;
+                          }
+                          reject(op.id, "GATT operation failed");
+                          continue;
+                      }
+                      if (r == 2) {
+                          resolve(op.id, "");
+                          continue;
+                      }
+                      cur = op;
+                      final boolean soft = op.type == 1 && !op.resp;   // write without response: do not wait long for the callback
+                      op.timeout = new Runnable() {
+                          @Override
+                          public void run() {
+                              synchronized (lock) {
+                                  if (cur == op) {
+                                      cur = null;
+                                      if (soft) resolve(op.id, "");
+                                      else reject(op.id, "timeout");
+                                      pump();
+                                  }
+                              }
+                          }
+                      };
+                      main.postDelayed(op.timeout, soft ? 120 : 6000);
+                      return;
+                  }
+              }
+
+              private void finishOp(int type, BluetoothGattCharacteristic c, boolean ok, String data) {
+                  synchronized (lock) {
+                      Op o = cur;
+                      if (o == null || o.type != type) return;
+                      if (c != null && o.ch != c && o.ch.getUuid() != null && !o.ch.getUuid().equals(c.getUuid())) return;
+                      if (o.timeout != null) main.removeCallbacks(o.timeout);
+                      cur = null;
+                      if (ok) resolve(o.id, data);
+                      else reject(o.id, "GATT status error");
+                      pump();
+                  }
+              }
+
+              private static String b64(byte[] v) {
+                  return v == null ? "" : Base64.encodeToString(v, Base64.NO_WRAP);
+              }
+
+              // ------------------------------------------------------------------ GATT callbacks
+
+              private final BluetoothGattCallback cb = new BluetoothGattCallback() {
+
+                  @Override
+                  public void onConnectionStateChange(final BluetoothGatt g, int status, int newState) {
+                      synchronized (lock) {
+                          if (g != gatt) {
+                              try {
+                                  g.close();
+                              } catch (Throwable t) {
+                                  // ignore
+                              }
+                              return;
+                          }
+                          if (newState == BluetoothGatt.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
+                              main.postDelayed(new Runnable() {
+                                  @Override
+                                  public void run() {
+                                      synchronized (lock) {
+                                          if (g != gatt || connectId < 0) return;
+                                          boolean ok = false;
+                                          try {
+                                              ok = g.requestMtu(247);
+                                          } catch (Throwable t) {
+                                              // ignore
+                                          }
+                                          if (!ok) discover(g);
+                                      }
+                                  }
+                              }, 250);
+                              main.postDelayed(new Runnable() {      // fallback if onMtuChanged never arrives
+                                  @Override
+                                  public void run() {
+                                      synchronized (lock) {
+                                          if (g == gatt && connectId >= 0) discover(g);
+                                      }
+                                  }
+                              }, 3000);
+                              return;
+                          }
+                          boolean wasLinked = linked;
+                          int cid = connectId;
+                          connectId = -1;
+                          if (connectTimeout != null) main.removeCallbacks(connectTimeout);
+                          failAll("disconnected");
+                          try {
+                              g.close();
+                          } catch (Throwable t) {
+                              // ignore
+                          }
+                          gatt = null;
+                          linked = false;
+                          discovering = false;
+                          if (cid >= 0) reject(cid, "GATT error " + status);
+                          if (wasLinked) event("d", "", "");
+                      }
+                  }
+
+                  @Override
+                  public void onMtuChanged(BluetoothGatt g, int mtu, int status) {
+                      synchronized (lock) {
+                          if (g == gatt && connectId >= 0) discover(g);
+                      }
+                  }
+
+                  @Override
+                  public void onServicesDiscovered(BluetoothGatt g, int status) {
+                      synchronized (lock) {
+                          if (g != gatt || connectId < 0) return;
+                          int cid = connectId;
+                          connectId = -1;
+                          if (connectTimeout != null) main.removeCallbacks(connectTimeout);
+                          if (status == BluetoothGatt.GATT_SUCCESS) {
+                              linked = true;
+                              resolve(cid, "");
+                          } else {
+                              closeGatt();
+                              reject(cid, "service discovery error " + status);
+                          }
+                      }
+                  }
+
+                  // Android 13+
+                  @Override
+                  public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic c, byte[] value, int status) {
+                      finishOp(0, c, status == BluetoothGatt.GATT_SUCCESS, b64(value));
+                  }
+
+                  // Android 12 and older
+                  @Override
+                  public void onCharacteristicRead(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
+                      finishOp(0, c, status == BluetoothGatt.GATT_SUCCESS, b64(c.getValue()));
+                  }
+
+                  @Override
+                  public void onCharacteristicWrite(BluetoothGatt g, BluetoothGattCharacteristic c, int status) {
+                      finishOp(1, c, status == BluetoothGatt.GATT_SUCCESS, "");
+                  }
+
+                  @Override
+                  public void onDescriptorWrite(BluetoothGatt g, BluetoothGattDescriptor d, int status) {
+                      finishOp(2, null, status == BluetoothGatt.GATT_SUCCESS, "");
+                  }
+
+                  // Android 13+
+                  @Override
+                  public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic c, byte[] value) {
+                      event("n", c.getUuid().toString(), b64(value));
+                  }
+
+                  // Android 12 and older
+                  @Override
+                  public void onCharacteristicChanged(BluetoothGatt g, BluetoothGattCharacteristic c) {
+                      event("n", c.getUuid().toString(), b64(c.getValue()));
+                  }
+              };
+          }
+          WF_EOF
+          mkdir -p "android/app/src/main/java/com/smarthud/glasses"
+          cat > android/app/src/main/java/com/smarthud/glasses/MainActivity.java <<'WF_EOF'
+          package com.smarthud.glasses;
+
+          import android.Manifest;
+          import android.app.Activity;
+          import android.content.ActivityNotFoundException;
+          import android.content.ContentResolver;
+          import android.content.ContentValues;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.os.Environment;
+          import android.os.PowerManager;
+          import android.provider.MediaStore;
+          import android.provider.Settings;
+          import android.speech.RecognitionListener;
+          import android.speech.RecognizerIntent;
+          import android.speech.SpeechRecognizer;
+          import android.view.WindowManager;
+          import android.webkit.GeolocationPermissions;
+          import android.webkit.JavascriptInterface;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebResourceRequest;
+          import android.webkit.WebResourceResponse;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          import org.json.JSONObject;
+
+          import java.io.ByteArrayInputStream;
+          import java.io.File;
+          import java.io.FileOutputStream;
+          import java.io.IOException;
+          import java.io.InputStream;
+          import java.io.OutputStream;
+          import java.nio.charset.StandardCharsets;
+          import java.util.ArrayList;
+          import java.util.HashMap;
+          import java.util.List;
+
+          public class MainActivity extends Activity {
+
+              static final String HOST = "smarthud.local";
+              private static final int REQ_PERMS = 1, REQ_FILE = 77, REQ_AUDIO = 42, REQ_GEO = 43;
+
+              private WebView web;
+              private BleBridge ble;
+              private SpeechRecognizer speech;
+              private String pendingLang = "nl-NL";
+              private ValueCallback<Uri[]> fileCb;
+              private GeolocationPermissions.Callback geoCb;
+              private String geoOrigin;
+              private volatile boolean pageReady = false;
+
+              private void evalJs(final String script) {
+                  runOnUiThread(new Runnable() {
+                      @Override
+                      public void run() {
+                          if (web != null) web.evaluateJavascript(script, null);
+                      }
+                  });
+              }
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  web = new WebView(this);
+                  setContentView(web);
+
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  s.setGeolocationEnabled(true);
+                  s.setMediaPlaybackRequiresUserGesture(false);
+                  s.setAllowFileAccess(false);
+                  s.setAllowContentAccess(false);
+                  s.setSupportZoom(false);
+                  s.setBuiltInZoomControls(false);
+                  s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+
+                  ble = new BleBridge(this, new BleBridge.Js() {
+                      @Override
+                      public void eval(String script) {
+                          evalJs(script);
+                      }
+                  });
+                  web.addJavascriptInterface(ble, "AndroidBLE");
+                  web.addJavascriptInterface(new AppBridge(), "AndroidApp");
+
+                  web.setWebViewClient(new WebViewClient() {
+                      @Override
+                      public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                          WebResourceResponse r = serve(request.getUrl());
+                          return r != null ? r : super.shouldInterceptRequest(view, request);
+                      }
+
+                      @Override
+                      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                          Uri u = request.getUrl();
+                          if (HOST.equals(u.getHost())) return false;
+                          openExternal(u);
+                          return true;
+                      }
+
+                      @Override
+                      public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                          pageReady = false;
+                      }
+                  });
+
+                  web.setWebChromeClient(new WebChromeClient() {
+                      @Override
+                      public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+                          if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                              callback.invoke(origin, true, false);
+                          } else {
+                              geoCb = callback;
+                              geoOrigin = origin;
+                              requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, REQ_GEO);
+                          }
+                      }
+
+                      @Override
+                      public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> callback, FileChooserParams params) {
+                          if (fileCb != null) fileCb.onReceiveValue(null);
+                          fileCb = callback;
+                          try {
+                              startActivityForResult(params.createIntent(), REQ_FILE);
+                          } catch (ActivityNotFoundException e) {
+                              fileCb = null;
+                              callback.onReceiveValue(null);
+                              return false;
+                          }
+                          return true;
+                      }
+                  });
+
+                  NotifService.sink = new NotifService.Sink() {
+                      @Override
+                      public void onNotif(String json) {
+                          if (!pageReady) NotifService.keep(json);
+                          else evalJs("window.onNativeNotif&&window.onNativeNotif(" + json + ")");
+                      }
+                  };
+
+                  askPermissions();
+                  web.loadUrl("https://" + HOST + "/index.html");
+              }
+
+              private void askPermissions() {
+                  List<String> need = new ArrayList<>();
+                  if (Build.VERSION.SDK_INT >= 31) {
+                      need.add(Manifest.permission.BLUETOOTH_SCAN);
+                      need.add(Manifest.permission.BLUETOOTH_CONNECT);
+                  }
+                  need.add(Manifest.permission.ACCESS_FINE_LOCATION);
+                  if (Build.VERSION.SDK_INT >= 33) need.add(Manifest.permission.POST_NOTIFICATIONS);
+                  List<String> todo = new ArrayList<>();
+                  for (String p : need) {
+                      if (checkSelfPermission(p) != PackageManager.PERMISSION_GRANTED) todo.add(p);
+                  }
+                  if (!todo.isEmpty()) requestPermissions(todo.toArray(new String[0]), REQ_PERMS);
+              }
+
+              @Override
+              public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
+                  boolean ok = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+                  if (code == REQ_GEO && geoCb != null) {
+                      geoCb.invoke(geoOrigin, ok, false);
+                      geoCb = null;
+                  } else if (code == REQ_AUDIO) {
+                      if (ok) beginSpeech(pendingLang);
+                      else evalJs("window.onNativeSpeech&&window.onNativeSpeech('','Microphone permission denied')");
+                  }
+                  super.onRequestPermissionsResult(code, perms, results);
+              }
+
+              @Override
+              protected void onActivityResult(int req, int res, Intent data) {
+                  if (req == REQ_FILE) {
+                      if (fileCb != null) {
+                          Uri[] r = null;
+                          try {
+                              r = WebChromeClient.FileChooserParams.parseResult(res, data);
+                          } catch (Throwable t) {
+                              // ignore
+                          }
+                          fileCb.onReceiveValue(r);
+                          fileCb = null;
+                      }
+                      return;
+                  }
+                  super.onActivityResult(req, res, data);
+              }
+
+              @Override
+              public void onBackPressed() {
+                  moveTaskToBack(true);      // keep running (Bluetooth link, notifications)
+              }
+
+              @Override
+              protected void onDestroy() {
+                  NotifService.sink = null;
+                  pageReady = false;
+                  if (speech != null) {
+                      try {
+                          speech.destroy();
+                      } catch (Throwable t) {
+                          // ignore
+                      }
+                      speech = null;
+                  }
+                  super.onDestroy();
+              }
+
+              // ------------------------------------------------------------------ local asset server (https://smarthud.local/...)
+
+              private static String mime(String p) {
+                  String l = p.toLowerCase();
+                  if (l.endsWith(".html")) return "text/html";
+                  if (l.endsWith(".js")) return "application/javascript";
+                  if (l.endsWith(".css")) return "text/css";
+                  if (l.endsWith(".json")) return "application/json";
+                  if (l.endsWith(".webmanifest")) return "application/manifest+json";
+                  if (l.endsWith(".png")) return "image/png";
+                  if (l.endsWith(".svg")) return "image/svg+xml";
+                  return "application/octet-stream";
+              }
+
+              private WebResourceResponse serve(Uri u) {
+                  if (!HOST.equals(u.getHost())) return null;
+                  String p = u.getPath();
+                  if (p == null || p.isEmpty() || p.equals("/")) p = "/index.html";
+                  p = p.substring(1);
+                  if (p.contains("..")) return null;
+                  try {
+                      InputStream in = getAssets().open(p);
+                      return new WebResourceResponse(mime(p), "utf-8", in);
+                  } catch (IOException e) {
+                      return new WebResourceResponse("text/plain", "utf-8", 404, "Not Found", new HashMap<String, String>(), new ByteArrayInputStream(new byte[0]));
+                  }
+              }
+
+              private void openExternal(Uri u) {
+                  String sc = u.getScheme();
+                  if (!"http".equals(sc) && !"https".equals(sc) && !"mailto".equals(sc) && !"tel".equals(sc)) return;
+                  try {
+                      startActivity(new Intent(Intent.ACTION_VIEW, u));
+                  } catch (Throwable t) {
+                      // ignore
+                  }
+              }
+
+              // ------------------------------------------------------------------ native speech recognition
+
+              private void beginSpeech(String lang) {
+                  if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                      evalJs("window.onNativeSpeech&&window.onNativeSpeech('','Speech recognition is not available on this phone')");
+                      return;
+                  }
+                  if (speech == null) {
+                      speech = SpeechRecognizer.createSpeechRecognizer(this);
+                      speech.setRecognitionListener(new RecognitionListener() {
+                          @Override public void onReadyForSpeech(Bundle params) { }
+                          @Override public void onBeginningOfSpeech() { }
+                          @Override public void onRmsChanged(float rmsdB) { }
+                          @Override public void onBufferReceived(byte[] buffer) { }
+                          @Override public void onEndOfSpeech() { }
+                          @Override public void onPartialResults(Bundle partialResults) { }
+                          @Override public void onEvent(int eventType, Bundle params) { }
+
+                          @Override
+                          public void onError(int error) {
+                              evalJs("window.onNativeSpeech&&window.onNativeSpeech('','')");
+                          }
+
+                          @Override
+                          public void onResults(Bundle results) {
+                              ArrayList<String> l = results == null ? null : results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                              String t = (l == null || l.isEmpty()) ? "" : l.get(0);
+                              evalJs("window.onNativeSpeech&&window.onNativeSpeech(" + JSONObject.quote(t) + ",'')");
+                          }
+                      });
+                  }
+                  Intent i = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+                  i.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+                  i.putExtra(RecognizerIntent.EXTRA_LANGUAGE, lang);
+                  i.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+                  i.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1);
+                  speech.startListening(i);
+              }
+
+              // ------------------------------------------------------------------ window.AndroidApp
+
+              private class AppBridge {
+
+                  @JavascriptInterface
+                  public boolean notifEnabled() {
+                      try {
+                          String s = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+                          return s != null && s.contains(getPackageName());
+                      } catch (Throwable t) {
+                          return false;
+                      }
+                  }
+
+                  @JavascriptInterface
+                  public void openNotifSettings() {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              try {
+                                  startActivity(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS"));
+                              } catch (Throwable t) {
+                                  try {
+                                      startActivity(new Intent(Settings.ACTION_SETTINGS));
+                                  } catch (Throwable t2) {
+                                      // ignore
+                                  }
+                              }
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void batterySettings() {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              try {
+                                  PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                                  if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                                      startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:" + getPackageName())));
+                                  } else {
+                                      startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                                  }
+                              } catch (Throwable t) {
+                                  // ignore
+                              }
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void keepAlive(final boolean on) {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              try {
+                                  Intent i = new Intent(MainActivity.this, KeepAliveService.class);
+                                  if (on) startForegroundService(i);
+                                  else stopService(i);
+                              } catch (Throwable t) {
+                                  // background start not allowed or permission missing: ignore
+                              }
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public void keepScreen(final boolean on) {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              if (on) getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                              else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public String drainNotifs() {
+                      String r = NotifService.drain();
+                      pageReady = true;
+                      return r;
+                  }
+
+                  @JavascriptInterface
+                  public void startListening(final String lang) {
+                      runOnUiThread(new Runnable() {
+                          @Override
+                          public void run() {
+                              pendingLang = lang == null ? "nl-NL" : lang;
+                              if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                  requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO}, REQ_AUDIO);
+                              } else {
+                                  beginSpeech(pendingLang);
+                              }
+                          }
+                      });
+                  }
+
+                  @JavascriptInterface
+                  public String saveFile(String name, String mime, String text) {
+                      try {
+                          String safe = name.replaceAll("[^A-Za-z0-9._-]", "_");
+                          byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
+                          if (Build.VERSION.SDK_INT >= 29) {
+                              ContentResolver cr = getContentResolver();
+                              ContentValues v = new ContentValues();
+                              v.put(MediaStore.MediaColumns.DISPLAY_NAME, safe);
+                              v.put(MediaStore.MediaColumns.MIME_TYPE, mime == null || mime.isEmpty() ? "application/octet-stream" : mime);
+                              v.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+                              Uri u = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v);
+                              if (u == null) return "Save failed";
+                              OutputStream os = cr.openOutputStream(u);
+                              if (os == null) return "Save failed";
+                              os.write(bytes);
+                              os.close();
+                              return "Downloads/" + safe;
+                          }
+                          File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                          if (dir == null) return "Save failed";
+                          File f = new File(dir, safe);
+                          FileOutputStream os = new FileOutputStream(f);
+                          os.write(bytes);
+                          os.close();
+                          return f.getAbsolutePath();
+                      } catch (Throwable t) {
+                          return "Save failed: " + t.getMessage();
+                      }
+                  }
+              }
+          }
+          WF_EOF
+          mkdir -p "android/app/src/main/java/com/smarthud/glasses"
+          cat > android/app/src/main/java/com/smarthud/glasses/NotifService.java <<'WF_EOF'
+          package com.smarthud.glasses;
+
+          import android.app.Notification;
+          import android.content.pm.PackageManager;
+          import android.os.Bundle;
+          import android.service.notification.NotificationListenerService;
+          import android.service.notification.StatusBarNotification;
+
+          import org.json.JSONObject;
+
+          import java.util.ArrayDeque;
+
+          /**
+           * Reads every notification posted on the phone (needs the "Notification access" permission)
+           * and hands it to the page, which forwards it to the glasses.
+           */
+          public class NotifService extends NotificationListenerService {
+
+              public interface Sink {
+                  void onNotif(String json);
+              }
+
+              public static volatile Sink sink;
+              private static final ArrayDeque<String> BACKLOG = new ArrayDeque<>();
+              private static final ArrayDeque<Long> BACKLOG_T = new ArrayDeque<>();
+
+              public static synchronized void keep(String json) {
+                  BACKLOG.add(json);
+                  BACKLOG_T.add(System.currentTimeMillis());
+                  while (BACKLOG.size() > 30) {
+                      BACKLOG.poll();
+                      BACKLOG_T.poll();
+                  }
+              }
+
+              /** JSON array with the notifications that arrived while the page was not ready (max 3 minutes old). */
+              public static synchronized String drain() {
+                  StringBuilder sb = new StringBuilder("[");
+                  long now = System.currentTimeMillis();
+                  boolean first = true;
+                  while (!BACKLOG.isEmpty()) {
+                      String j = BACKLOG.poll();
+                      Long t = BACKLOG_T.poll();
+                      if (t != null && now - t > 180000L) continue;
+                      if (!first) sb.append(',');
+                      sb.append(j);
+                      first = false;
+                  }
+                  return sb.append(']').toString();
+              }
+
+              @Override
+              public void onNotificationPosted(StatusBarNotification sbn) {
+                  try {
+                      handle(sbn);
+                  } catch (Throwable t) {
+                      // never crash the listener
+                  }
+              }
+
+              private void handle(StatusBarNotification sbn) throws Exception {
+                  if (sbn == null) return;
+                  Notification n = sbn.getNotification();
+                  if (n == null) return;
+                  String pkg = sbn.getPackageName();
+                  if (pkg == null || pkg.equals(getPackageName()) || pkg.equals("android") || pkg.equals("com.android.systemui")) return;
+                  if ((n.flags & Notification.FLAG_GROUP_SUMMARY) != 0) return;
+                  String cat = n.category == null ? "" : n.category;
+                  boolean call = cat.equals(Notification.CATEGORY_CALL);
+                  if ((n.flags & Notification.FLAG_ONGOING_EVENT) != 0 && !call) return;
+                  if (cat.equals(Notification.CATEGORY_TRANSPORT) || cat.equals(Notification.CATEGORY_PROGRESS)
+                          || cat.equals(Notification.CATEGORY_SERVICE) || cat.equals(Notification.CATEGORY_SYSTEM)
+                          || cat.equals(Notification.CATEGORY_STATUS) || cat.equals(Notification.CATEGORY_NAVIGATION)) return;
+
+                  Bundle ex = n.extras;
+                  if (ex == null) return;
+                  CharSequence title = ex.getCharSequence(Notification.EXTRA_TITLE);
+                  CharSequence text = ex.getCharSequence(Notification.EXTRA_BIG_TEXT);
+                  if (text == null || text.length() == 0) text = ex.getCharSequence(Notification.EXTRA_TEXT);
+                  String t = title == null ? "" : title.toString().trim();
+                  String x = text == null ? "" : text.toString().trim();
+                  if (t.isEmpty() && x.isEmpty()) return;
+
+                  String label = pkg;
+                  try {
+                      PackageManager pm = getPackageManager();
+                      label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                  } catch (Throwable e) {
+                      // keep package name
+                  }
+
+                  JSONObject o = new JSONObject();
+                  o.put("pkg", pkg);
+                  o.put("app", label);
+                  o.put("title", t);
+                  o.put("text", x);
+                  o.put("cat", call ? "call" : cat);
+                  String json = o.toString();
+                  Sink s = sink;
+                  if (s != null) s.onNotif(json);
+                  else keep(json);
+              }
+          }
+          WF_EOF
+          mkdir -p "android/app/src/main/java/com/smarthud/glasses"
+          cat > android/app/src/main/java/com/smarthud/glasses/KeepAliveService.java <<'WF_EOF'
+          package com.smarthud.glasses;
+
+          import android.Manifest;
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.Service;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.content.pm.ServiceInfo;
+          import android.os.Build;
+          import android.os.IBinder;
+
+          /** Foreground service that keeps the app process (Bluetooth link, GPS, notifications) alive in the background. */
+          public class KeepAliveService extends Service {
+
+              private static final String CHANNEL = "smarthud_keep";
+              private static final int ID = 1601;
+
+              @Override
+              public IBinder onBind(Intent intent) {
+                  return null;
+              }
+
+              @Override
+              public int onStartCommand(Intent intent, int flags, int startId) {
+                  try {
+                      if (Build.VERSION.SDK_INT >= 26) {
+                          NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                          if (nm != null) {
+                              NotificationChannel ch = new NotificationChannel(CHANNEL, "Smart HUD", NotificationManager.IMPORTANCE_LOW);
+                              ch.setShowBadge(false);
+                              nm.createNotificationChannel(ch);
+                          }
+                      }
+                      Intent open = new Intent(this, MainActivity.class);
+                      open.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+                      PendingIntent pi = PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                      Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
+                      b.setContentTitle("Smart HUD");
+                      b.setContentText("Bril verbonden / Glasses connected");
+                      b.setSmallIcon(android.R.drawable.stat_sys_data_bluetooth);
+                      b.setOngoing(true);
+                      b.setContentIntent(pi);
+                      Notification n = b.build();
+
+                      if (Build.VERSION.SDK_INT >= 29) {
+                          int type = 0;
+                          boolean loc = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
+                          boolean bt = Build.VERSION.SDK_INT < 31 || checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+                          if (bt) type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE;
+                          if (loc) type |= ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION;
+                          if (type == 0) {
+                              stopSelf();
+                              return START_NOT_STICKY;
+                          }
+                          startForeground(ID, n, type);
+                      } else {
+                          startForeground(ID, n);
+                      }
+                  } catch (Throwable t) {
+                      stopSelf();
+                  }
+                  return START_NOT_STICKY;
+              }
+
+              @Override
+              public void onDestroy() {
+                  try {
+                      stopForeground(true);
+                  } catch (Throwable t) {
+                      // ignore
+                  }
+                  super.onDestroy();
+              }
+          }
+          WF_EOF
+
+      - name: Build debug APK
+        run: gradle -p android assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk SmartHUD.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SmartHUD-APK
+          path: SmartHUD.apk
+
+      - name: Publish release (direct download link)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: Smart HUD APK ${{ github.run_number }}
+          files: SmartHUD.apk
