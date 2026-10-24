@@ -271,6 +271,12 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
 #customBox.on { display: grid !important; }
 .pinbadge { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px var(--font-num); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
 .pinbadge.last { background: var(--bad); color: #fff; }
+.wx { display: flex; align-items: center; gap: 14px; }
+.wx-ico { font-size: 44px; line-height: 1; }
+.wx-t { font-size: 28px; font-weight: 700; }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+#weekChart svg { width: 100%; height: auto; display: block; }
+.gpxb { margin-inline-start: 6px; }
 </style>
 </head>
 <body>
@@ -336,6 +342,11 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
       <div class="notice warn small">الموقع بالمتصفح بيشتغل والصفحة ظاهرة فقط. خلّي المتصفح مفتوح والشاشة شغالة (التطبيق بيمنع إطفاء الشاشة تلقائياً).</div>
     </div>
 
+    <div class="card" id="wxCard">
+      <div class="row"><h2>الطقس</h2><button class="mini" id="wxRefresh" aria-label="تحديث">⟳</button></div>
+      <div class="wx"><div class="wx-ico" id="wxIco">⛅</div><div><div class="wx-t" id="wxTemp">—</div><div class="muted small" id="wxLine">جاري تحميل الطقس…</div></div></div>
+    </div>
+
     <div class="card ai-card">
       <div class="row"><h2>المساعد الذكي</h2>
         <div class="ai-tools"><button class="mini" id="aiSpeak" aria-pressed="false" aria-label="صوت">🔇</button><button class="mini" id="aiClear" aria-label="مسح">🗑</button></div></div>
@@ -348,7 +359,7 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
         <button class="btn primary" id="aiGo">إرسال</button>
       </div>
       <div class="muted small" id="aiMode"></div>
-      <div class="muted small" id="aiHint">للكلام بعربي وهولندي مع بعض: اضغط على زر اللغة حتى يصير MIX ثم 🎤 (واضغط 🎤 مرة ثانية لإنهاء التسجيل).</div>
+      <div class="muted small" id="aiHint">نصيحة: إذا بتحكي عربي مع كلمات هولندية، اختر AR (بيفهم الكلمات الهولندية المكتوبة بحروف عربية). للهولندية الصافية اختر NL. أو اكتب مباشرة.</div>
     </div>
 
     <div class="card">
@@ -414,6 +425,11 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
       <div class="badges" id="badges"></div>
     </div>
     <div class="card">
+      <h2>آخر 7 أيام</h2>
+      <div id="weekChart"></div>
+      <div class="muted small" id="weekTotals"></div>
+    </div>
+    <div class="card">
       <h2>سجل الرحلات</h2>
       <div class="muted small" id="rTotals"></div>
       <div id="rList"></div>
@@ -436,6 +452,12 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
       </div>
       <div class="chips" id="favChips"></div>
       <div class="chips" id="recChips"></div>
+    </div>
+
+    <div class="card">
+      <h2>موقف المركبة</h2>
+      <div class="muted small" id="parkInfo"></div>
+      <div class="row2"><button class="btn" id="parkSave">احفظ موقعي هون</button><button class="btn primary" id="parkGo">ارجع للموقف</button></div>
     </div>
 
     <div class="card" id="customCard">
@@ -541,6 +563,17 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
       <div class="field"><b>المظهر</b>
         <div class="seg" id="themeSeg"><button data-v="auto">تلقائي</button><button data-v="dark">داكن</button><button data-v="light">فاتح</button></div></div>
       <button class="btn" id="btnInstall" hidden>تثبيت التطبيق</button>
+    </div>
+
+    <div class="card">
+      <h2>أدوات إضافية</h2>
+      <div class="sw"><label for="swVoice"><b>التوجيه الصوتي</b><span class="muted small">يقرأ التعليمات بصوت عالي أثناء الملاحة</span></label><input type="checkbox" id="swVoice"></div>
+      <div class="sw"><label for="swRain"><b>تنبيه المطر على النظارة</b><span class="muted small">تنبيه تلقائي إذا متوقع مطر خلال ساعتين</span></label><input type="checkbox" id="swRain"></div>
+      <div class="field"><b>الوزن (كغ) لحساب السعرات</b><input type="number" id="weightIn" min="30" max="200" inputmode="numeric"></div>
+      <div class="field"><b>نسخة احتياطية</b>
+        <div class="row2"><button class="btn" id="bkSave">حفظ نسخة</button><button class="btn" id="bkLoad">استعادة نسخة</button></div>
+        <input type="file" id="bkFile" accept="application/json,.json" hidden>
+        <div class="muted small">المفاتيح السرية (API) ما بتنحفظ بالنسخة.</div></div>
     </div>
 
     <div class="card">
@@ -672,7 +705,6 @@ const NLD = {
   'الإنجازات': 'Prestaties', 'اسأل أي شيء أو أعطني أمراً': 'Vraag me iets of geef een opdracht', 'لغة الميكروفون': 'Microfoontaal', 'صوت': 'Geluid', 'مسح': 'Wissen',
   'عادي': 'Normaal', '📍 مسار مخصص': '📍 Eigen route', 'اضغط على الخريطة لإضافة دبابيس بالترتيب. آخر دبوس هو الوجهة.': 'Tik op de kaart om pins in volgorde toe te voegen. De laatste pin is de bestemming.',
   '↩ تراجع': '↩ Ongedaan', 'مسح الدبابيس': 'Pins wissen', '⭐ حفظ المسار': '⭐ Route bewaren', 'تم حفظ المسار': 'Route bewaard', 'دبوس': 'Pin',
-  'للكلام بعربي وهولندي مع بعض: اضغط على زر اللغة حتى يصير MIX ثم 🎤 (واضغط 🎤 مرة ثانية لإنهاء التسجيل).': 'Arabisch en Nederlands door elkaar? Tik op de taalknop tot er MIX staat en daarna op 🎤 (tik nogmaals om de opname te stoppen).',
   'إشعارات التطبيقات (انستغرام وغيره)': 'Meldingen van apps (Instagram enz.)', 'استقبال الإشعارات على النظارة': 'Meldingen op de bril ontvangen',
   'نسخ الرابط': 'Kopieer link', 'إشعار تجريبي': 'Testmelding', 'رابط جديد': 'Nieuwe link', 'كيف أربط انستغرام؟': 'Hoe koppel ik Instagram?',
   'وصلت إلى وجهتك 🎉': 'Je bent er! 🎉', 'وضع الهدوء': 'Stille modus',
@@ -680,6 +712,18 @@ const NLD = {
 };
 let LANG = 'nl';
 try { const sv = localStorage.getItem('hud.ui'); if (sv === 'ar' || sv === 'nl') LANG = sv; } catch (e) { /* storage blocked */ }
+
+Object.assign(NLD, {
+  'نصيحة: إذا بتحكي عربي مع كلمات هولندية، اختر AR (بيفهم الكلمات الهولندية المكتوبة بحروف عربية). للهولندية الصافية اختر NL. أو اكتب مباشرة.': 'Tip: spreek je Arabisch met Nederlandse woorden, kies dan AR (Nederlandse woorden in Arabische letters worden begrepen). Puur Nederlands: kies NL. Of typ gewoon.',
+  'الطقس': 'Weer', 'تحديث': 'Vernieuwen', 'الرياح': 'Wind', 'احتمال المطر': 'Kans op regen', 'جاري تحميل الطقس…': 'Weer laden…',
+  'تعذّر تحميل الطقس': 'Weer laden mislukt', 'تنبيه المطر على النظارة': 'Regenmelding op de bril', 'تنبيه تلقائي إذا متوقع مطر خلال ساعتين': 'Automatische melding als er binnen 2 uur regen komt',
+  'موقف المركبة': 'Parkeerplek', 'احفظ موقعي هون': 'Bewaar mijn positie', 'ارجع للموقف': 'Terug naar parkeerplek', 'ما في موقف محفوظ': 'Geen parkeerplek opgeslagen',
+  'تم حفظ الموقف': 'Parkeerplek opgeslagen', 'محفوظ منذ': 'Opgeslagen', 'التوجيه الصوتي': 'Gesproken navigatie', 'يقرأ التعليمات بصوت عالي أثناء الملاحة': 'Leest de aanwijzingen hardop voor tijdens het navigeren',
+  'الوزن (كغ) لحساب السعرات': 'Gewicht (kg) voor calorieën', 'نسخة احتياطية': 'Back-up', 'حفظ نسخة': 'Back-up opslaan', 'استعادة نسخة': 'Back-up terugzetten',
+  'المفاتيح السرية (API) ما بتنحفظ بالنسخة.': 'API-sleutels worden niet in de back-up opgenomen.', 'تمت الاستعادة': 'Teruggezet', 'ملف غير صالح': 'Ongeldig bestand',
+  'آخر 7 أيام': 'Laatste 7 dagen', 'سعرات': 'kcal', 'وفّرت CO₂': 'CO₂ bespaard', 'بعد': 'Over', 'متر': 'meter', 'ملخص يومي': 'Dagbriefing',
+  'الموقع غير متاح': 'Locatie niet beschikbaar', 'مطر قريب': 'Regen komt eraan', 'أدوات إضافية': 'Extra tools',
+});
 function tx(s) {
   if (LANG === 'ar' || typeof s !== 'string') return s;
   const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s);
@@ -877,12 +921,17 @@ function renderRide() {
       m.textContent = dt + ' · ' + tx('المعدل') + ' ' + av + ' · ' + tx('الأعلى') + ' ' + kmh(r.max) + ' ' + tx('كم/س') + ' · ↑' + r.c + ' m';
       const b = document.createElement('button'); b.textContent = tx('حذف');
       b.addEventListener('click', () => { rides.splice(i, 1); jset('hud.rides', rides); schedule(); });
-      it.append(a, m, b); list.appendChild(it);
+      const g = document.createElement('button'); g.textContent = 'GPX'; g.className = 'gpxb';
+      g.addEventListener('click', () => download('ride-' + new Date(r.t).toISOString().slice(0, 10) + '.gpx', 'application/gpx+xml', gpxOf(r)));
+      m.textContent += ' · ' + kcalOf(r) + ' ' + tx('سعرات');
+      const bx = document.createElement('div'); bx.style.cssText = 'display:flex;flex-direction:column;gap:6px;grid-row:1/span 2;grid-column:2;align-self:center'; g.style.cssText = 'color:var(--text)'; bx.append(g, b);
+      it.append(a, m, bx); list.appendChild(it);
     });
   }
   const tot = rides.reduce((a, r) => a + r.d, 0);
   $('#rTotals').textContent = rides.length ? tx('المجموع:') + ' ' + fmtDist(tot) + ' · ' + rides.length + ' ' + tx('رحلات') : '';
   $('#rClear').hidden = !rides.length;
+  renderWeek();
 }
 
 /* ============================== favorites ============================== */
@@ -1007,6 +1056,10 @@ function actDo(a) {
     case 'ride_stop': rideStop(); return true;
     case 'nav_stop': stopNav(); return true;
     case 'navigate': navigateTo(String(a.query || '')); return true;
+    case 'park_save': parkSave(); return true;
+    case 'park_go': return parkGo();
+    case 'weather': wxLoad(true); return true;
+    case 'voice_guidance': store('hud.voice', v ? '1' : '0'); schedule(); return true;
     default: return false;
   }
 }
@@ -1035,6 +1088,9 @@ function localParse(t) {
   const num = () => { const x = NUM.exec(s); return x ? Number(x[1]) : null; };
   if ((m = /^\s*(?:navigeer|route|ga|rij|navigate|drive|take me|وجّه|وجه|خذني|روح)(?:ني)?\s*(?:naar|to|الى|إلى|على)?\s+(.+)$/i.exec(t.trim())) && !/helder|limit|bericht/.test(s)) out.push({ action: 'navigate', query: m[1] });
   else if (/(stuur|verstuur|bericht|send|message|ارسل|أرسل|رسالة)/.test(s) && (m = /(?:bericht|message|رسالة|stuur|send|ارسل|أرسل)\s*[:：]?\s*(.+)$/i.exec(t.trim()))) out.push({ action: 'message', kind: /bel|call|مكالمة|اتصال/.test(s) ? 1 : 2, text: m[1].replace(/^(?:bericht|message|رسالة)\s*[:：]?\s*/i, '') });
+  else if (/(parkeer|park here|احفظ.*موقف|احفظ.*موقع)/.test(s)) out.push({ action: 'park_save' });
+  else if (/(terug.*(fiets|auto|parkeer)|naar.*(mijn )?(fiets|auto)|back to.*(bike|car)|ارجع.*(موقف|دراج|سيار))/.test(s)) out.push({ action: 'park_go' });
+  else if (/(^|\s)(weer|weather|طقس)/.test(s)) out.push({ action: 'weather' });
   else if (/(zoek.*bril|waar.*bril|find.*glasses|دور.*نظار|وين.*نظار)/.test(s)) out.push({ action: 'find' });
   else if (/(helder|bright|سطوع|اضاءة|إضاءة)/.test(s) && num() != null) out.push({ action: 'brightness', value: num() });
   else if (/(limiet|limit|snelheidslimiet|حد)/.test(s)) out.push({ action: 'limit', value: /(uit|off|stop|معطل|الغ)/.test(s) ? 0 : num() });
@@ -1052,11 +1108,11 @@ function localParse(t) {
 }
 const AI_SYSTEM = 'You are the assistant inside "Smart HUD", a companion app for navigation glasses. You can (1) chat about ANYTHING (general knowledge, advice, translation, trip ideas, math, writing) and (2) control the glasses. ' +
   'LANGUAGE RULE: the user often mixes Arabic, Dutch and English in one message. Count the words per language and ALWAYS answer in the language that has the most words in the user\'s message (the app also gives you a hint). Keep names and technical terms as they are. ' +
-  'SPEECH: a message flagged as voice comes from speech recognition; Dutch/English words may be spelled phonetically in Arabic letters (e.g. هيلديرهيد = helderheid, ليميت = limiet, نافيخير = navigeer, ستور بيريخت = stuur bericht, زوك ماين بريل = zoek mijn bril) or Arabic mangled into Latin letters. Reconstruct the intended words by sound before answering; if truly unclear, ask ONE short clarifying question. If audio is attached, listen to it, put what you heard in "heard", then answer/act. ' +
-  'OUTPUT: reply ONLY with compact JSON {"heard":"(only for audio)","reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
+  'SPEECH: a message flagged as voice comes from speech recognition; Dutch/English words may be spelled phonetically in Arabic letters (e.g. هيلديرهيد = helderheid, ليميت = limiet, نافيخير = navigeer, ستور بيريخت = stuur bericht, زوك ماين بريل = zoek mijn bril) or Arabic mangled into Latin letters. Reconstruct the intended words by sound before answering; if truly unclear, ask ONE short clarifying question. ' +
+  'OUTPUT: reply ONLY with compact JSON {"reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
   'Allowed actions (objects with "action"): brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
   'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
-  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}.';
+  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}, park_save (remember current position as parking spot), park_go (navigate back to the parking spot), weather (refresh weather), voice_guidance{value bool}. Use the LIVE CONTEXT (weather, ride, navigation, battery) to give useful, concrete answers; for a daily briefing summarise weather, battery, last ride and give one tip.';
 function dominantLang(text) {
   const words = String(text || '').split(/[\s,.;:!?()\[\]"«»،؛؟]+/).filter(Boolean);
   let ar = 0, nl = 0, en = 0;
@@ -1072,7 +1128,7 @@ function dominantLang(text) {
   return nl || en ? 'nl' : (ar ? 'ar' : (LANG === 'ar' ? 'ar' : 'nl'));
 }
 const LANG_NAME = { ar: 'Arabic', nl: 'Dutch', en: 'English' };
-const SPEECH_LANG = { ar: 'ar-SA', nl: 'nl-NL', en: 'en-US', mix: 'ar-SA' };
+const SPEECH_LANG = { ar: 'ar-SA', nl: 'nl-NL', en: 'en-US' };
 function speak(txt) {
   if (store('hud.tts') !== '1' || !('speechSynthesis' in window)) return;
   try {
@@ -1088,7 +1144,6 @@ async function orModelList() {
   const j = await res.json();
   const list = (j.data || []).filter((m) => m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0 && (m.context_length || 0) >= 8000
     && !/(embed|guard|moderation|:thinking)/i.test(m.id)).map((m) => ({ id: m.id, ctx: m.context_length || 0,
-    audio: !!(m.architecture && (m.architecture.input_modalities || []).indexOf('audio') >= 0),
     text: !(m.architecture && m.architecture.output_modalities && m.architecture.output_modalities.indexOf('text') < 0) }));
   jset('hud.ormodels', { t: Date.now(), list });
   return list;
@@ -1099,8 +1154,7 @@ function rankModels(list) {
   const score = (m) => { const k = pref.findIndex((x) => m.id.toLowerCase().includes(x)); return size(m) + (k < 0 ? 0 : (pref.length - k) * 4); };
   return list.slice().sort((a, b) => score(b) - score(a) || b.ctx - a.ctx).map((m) => m.id);
 }
-async function orFreeModels() { return rankModels((await orModelList()).filter((m) => m.text && !m.audioOnly)); }
-async function orAudioModels() { return rankModels((await orModelList()).filter((m) => m.audio && m.text)); }
+async function orFreeModels() { return rankModels((await orModelList()).filter((m) => m.text)); }
 let orBlocked = jget('hud.orblock', []);
 function blockModel(id, msg) {
   if (/(agentic|harness|only available|not available|not supported|does not support|no endpoints)/i.test(msg || '') && orBlocked.indexOf(id) < 0) {
@@ -1109,32 +1163,28 @@ function blockModel(id, msg) {
 }
 const cool = {};   // model id -> timestamp until which it is skipped (rate limit / not available)
 function coolDown(id, status) { cool[id] = Date.now() + (status === 429 ? 90000 : 1800000); }
-async function orCandidates(audio) {
+async function orCandidates() {
   const out = [];
-  const saved = store('hud.aimodel'); if (saved && !audio) out.push(saved);
-  try { (await (audio ? orAudioModels() : orFreeModels())).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
-  if (!out.length && !audio) out.push('meta-llama/llama-3.3-70b-instruct:free');
+  const saved = store('hud.aimodel'); if (saved) out.push(saved);
+  try { (await orFreeModels()).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
+  if (!out.length) out.push('meta-llama/llama-3.3-70b-instruct:free');
   const now = Date.now();
   const ready = out.filter((id) => !(cool[id] > now) && orBlocked.indexOf(id) < 0);
-  if (!ready.length && audio) return [];
-  return ready.length ? ready : out.filter((id) => orBlocked.indexOf(id) < 0);   // if everything is cooling down, try them all again
+  return ready.length ? ready : out.filter((id) => orBlocked.indexOf(id) < 0);   // everything cooling down: try again
 }
-async function aiAsk(text, audioB64, voice) {
+async function aiAsk(text, voice) {
   const key = store('hud.aikey');
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 40000);
   try {
-    const hint = audioB64 ? 'Detect the dominant language of the audio yourself and answer in it.' : 'Language hint for this message: mostly ' + LANG_NAME[dominantLang(text)] + '.';
-    const sys = AI_SYSTEM + ' ' + hint + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
-    const userContent = audioB64
-      ? [{ type: 'text', text: '(voice message, mixed languages possible: first write what you heard in "heard", then answer or act)' }, { type: 'input_audio', input_audio: { data: audioB64, format: 'wav' } }]
-      : (voice ? '[voice] ' : '') + text;
+    const hint = 'Language hint for this message: mostly ' + LANG_NAME[dominantLang(text)] + '.';
+    const sys = AI_SYSTEM + ' ' + hint + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '. LIVE CONTEXT: ' + aiContext() + '.';
+    const userContent = (voice ? '[voice] ' : '') + text;
     const msgs = aiHist.concat([{ role: 'user', content: userContent }]);
     const orKey = key.indexOf('sk-or-') === 0;
-    if (audioB64 && !orKey) throw new Error('audio needs an OpenRouter key');
     let res, j, raw;
     if (orKey) {
-      const cands = await orCandidates(!!audioB64);
-      if (!cands.length) throw new Error('no free audio model available right now');
+      const cands = await orCandidates();
+      if (!cands.length) throw new Error('no free model available right now');
       let lastErr = null; raw = null;
       for (const mid of cands) {
         try {
@@ -1147,7 +1197,7 @@ async function aiAsk(text, audioB64, voice) {
           if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); blockModel(mid, lastErr.message); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
           const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
           if (!c) { lastErr = new Error('empty answer'); continue; }
-          raw = c; if (!audioB64) store('hud.aimodel', mid); break;
+          raw = c; store('hud.aimodel', mid); break;
         } catch (e) { lastErr = e; if (e && e.name === 'AbortError') break; }
       }
       if (raw == null) throw new Error((lastErr && lastErr.message ? lastErr.message : 'no model') + ' | https://openrouter.ai/settings/privacy');
@@ -1164,46 +1214,13 @@ async function aiAsk(text, audioB64, voice) {
     let obj;
     try { const m = /\{[\s\S]*\}/.exec(raw); obj = JSON.parse(m ? m[0] : '{}'); if (typeof obj.reply !== 'string' && !Array.isArray(obj.actions)) throw new Error('shape'); }
     catch (e) { obj = { reply: String(raw).replace(/```[a-z]*/g, '').trim(), actions: [] }; }
-    const histUser = audioB64 ? '[voice] ' + (obj.heard || '') : (voice ? '[voice] ' : '') + text;
+    const histUser = (voice ? '[voice] ' : '') + text;
     aiHist.push({ role: 'user', content: histUser }, { role: 'assistant', content: JSON.stringify({ reply: obj.reply, actions: obj.actions }) });
     while (aiHist.length > 12) aiHist.shift();
     return obj;
   } finally { clearTimeout(to); }
 }
 
-/* ---- voice recording for audio-capable models ---- */
-let recStop = null;
-async function recordClip(maxMs) {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  const rec = new MediaRecorder(stream); const chunks = [];
-  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-  const done = new Promise((res) => { rec.onstop = res; });
-  rec.start();
-  recStop = () => { if (rec.state !== 'inactive') rec.stop(); };
-  const t = setTimeout(recStop, maxMs);
-  await done; clearTimeout(t); recStop = null;
-  stream.getTracks().forEach((tr) => tr.stop());
-  return new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
-}
-function wavFromFloat32(f, rate) {
-  const dv = new DataView(new ArrayBuffer(44 + f.length * 2));
-  const w = (o, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
-  w(0, 'RIFF'); dv.setUint32(4, 36 + f.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
-  dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
-  dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, f.length * 2, true);
-  for (let i = 0; i < f.length; i++) { const v = Math.max(-1, Math.min(1, f[i])); dv.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true); }
-  return new Uint8Array(dv.buffer);
-}
-function bytesToB64(u8) { let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(bin); }
-async function blobToWavB64(blob) {
-  const buf = await blob.arrayBuffer();
-  const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
-  const audio = await ctx.decodeAudioData(buf); try { ctx.close(); } catch (e) { /* ignore */ }
-  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(audio.duration * 16000)), 16000);
-  const src = off.createBufferSource(); src.buffer = audio; src.connect(off.destination); src.start();
-  const out = await off.startRendering();
-  return bytesToB64(wavFromFloat32(out.getChannelData(0), 16000));
-}
 const T2 = (nl, ar, en) => { const d = dominantLang(aiLastUser); return d === 'ar' ? ar : d === 'en' ? (en || nl) : nl; };
 let aiLastUser = '';
 function aiTyping() {
@@ -1212,27 +1229,20 @@ function aiTyping() {
 }
 async function aiRun(text, opts) {
   opts = opts || {};
-  text = (text || '').trim(); if (!text && !opts.audio) return;
+  text = (text || '').trim(); if (!text) return;
   aiLastUser = text;
   if (text) aiSay(text, true);
   let obj;
   if (store('hud.aikey')) {
     const ty = aiTyping();
-    try { obj = await aiAsk(text, opts.audio, opts.voice); ty.remove(); if (opts.audio && obj.heard) { aiLastUser = obj.heard; aiSay(String(obj.heard), true); } }
+    try { obj = await aiAsk(text, opts.voice); ty.remove(); }
     catch (e) {
       ty.remove(); dlog('ai error: ' + (e && e.message));
-      if (opts.audio) {
-        store('hud.audiooff', String(Date.now() + 3600000));
-        aiSay(T2('Geen werkend gratis audiomodel op dit moment. Tik nogmaals op 🎤: ik gebruik nu de gewone spraakherkenning (kies AR als je vooral Arabisch praat).',
-          'ما في نموذج صوتي مجاني شغّال هلأ. اضغط 🎤 مرة ثانية: رح استعمل التعرّف العادي على الصوت (اختر AR إذا بتحكي أغلبه عربي).',
-          'No working free audio model right now. Tap 🎤 again: I will use normal speech recognition (pick AR if you mostly speak Arabic).'));
-        return;
-      }
       aiSay('AI: ' + (e && e.message ? e.message : e)); obj = { actions: localParse(text) };
     }
   } else obj = { actions: localParse(text) };
   const acts = Array.isArray(obj.actions) ? obj.actions : [];
-  const needsBle = acts.some((a) => a.action !== 'navigate' && a.action !== 'ride_start' && a.action !== 'ride_stop' && a.action !== 'nav_stop');
+  const needsBle = acts.some((a) => a.action !== 'navigate' && a.action !== 'ride_start' && a.action !== 'ride_stop' && a.action !== 'nav_stop' && ['park_save', 'park_go', 'weather', 'voice_guidance'].indexOf(a.action) < 0);
   if (needsBle && !ble.connected) { aiSay(T2('Verbind eerst met de bril.', 'اتصل بالنظارة أولاً.', 'Connect to the glasses first.')); return; }
   let did = 0; acts.forEach((a) => { try { if (actDo(a)) did++; } catch (e) { dlog('action failed ' + e); } });
   if (obj.reply) { aiSay(String(obj.reply)); speak(String(obj.reply)); }
@@ -1245,9 +1255,166 @@ async function aiRun(text, opts) {
 function renderAiChips() {
   const box = $('#aiChips'); if (box.dataset.l === LANG) return; box.dataset.l = LANG; box.textContent = '';
   const items = LANG === 'ar'
-    ? ['كم باقي لين أوصل؟', 'ترجم: ik ben er bijna', 'أعطني فكرة رحلة بالدراجة', 'سطوع 50', 'دوّر على نظارتي']
-    : ['Hoe laat is het in Dubai?', 'Vertaal naar Arabisch: ik ben er bijna', 'Geef me een fietsroute-idee', 'helderheid 50', 'zoek mijn bril'];
-  items.forEach((t) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', () => aiRun(t)); box.appendChild(b); });
+    ? ['ملخص يومي ☀️', 'كم باقي لين أوصل؟', 'ترجم: ik ben er bijna', 'احفظ موقع الدراجة', 'سطوع 50', 'دوّر على نظارتي']
+    : ['Dagbriefing ☀️', 'Hoe laat is het in Dubai?', 'Vertaal naar Arabisch: ik ben er bijna', 'Parkeer hier', 'helderheid 50', 'zoek mijn bril'];
+  items.forEach((t) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', () => aiRun(/^(Dagbriefing|ملخص يومي)/.test(t) ? (LANG === 'ar' ? 'أعطني ملخص يومي قصير: الطقس، بطارية النظارة، آخر رحلة، ونصيحة وحدة' : 'Geef een korte dagbriefing: weer, accu van de bril, laatste rit en één tip.') : t)); box.appendChild(b); });
+}
+
+
+/* ============================== v1.5 extras: weather, parking, voice guidance, stats, backup ============================== */
+const WX_ICO = (c) => c === 0 ? '☀️' : c <= 2 ? '🌤️' : c === 3 ? '☁️' : c <= 48 ? '🌫️' : c <= 57 ? '🌦️' : c <= 67 ? '🌧️' : c <= 77 ? '❄️' : c <= 82 ? '🌧️' : c <= 86 ? '🌨️' : '⛈️';
+const wx = { t: null, w: null, code: 0, rain: 0, ts: 0, busy: false };
+async function wxLoad(force) {
+  if (wx.busy || (!force && Date.now() - wx.ts < 600000)) return;
+  const p = nav.pos; if (!p && !force) return;
+  wx.busy = true;
+  try {
+    const pos = p || (await getCurrentPos()).coords;
+    const la = p ? p[0] : pos.latitude, lo = p ? p[1] : pos.longitude;
+    const j = await fetchJson('https://api.open-meteo.com/v1/forecast?latitude=' + la.toFixed(3) + '&longitude=' + lo.toFixed(3) +
+      '&current=temperature_2m,weather_code,wind_speed_10m&hourly=precipitation_probability&forecast_days=2&timezone=auto', 12000);
+    const c = j.current || {};
+    const hrs = (j.hourly && j.hourly.time) || [], pr = (j.hourly && j.hourly.precipitation_probability) || [];
+    const now = Date.now(); let rain = 0;
+    hrs.forEach((h, i) => { const tt = new Date(h).getTime(); if (tt >= now - 1800000 && tt <= now + 7200000) rain = Math.max(rain, pr[i] || 0); });
+    Object.assign(wx, { t: c.temperature_2m, w: c.wind_speed_10m, code: c.weather_code || 0, rain, ts: Date.now() });
+    wxRainAlert();
+  } catch (e) { wx.err = true; dlog('weather failed: ' + (e && e.message)); }
+  wx.busy = false; schedule();
+}
+function wxMaybe() { if (!wx.ts || Date.now() - wx.ts > 900000) wxLoad(false); }
+function wxRainAlert() {
+  if (store('hud.rainalert') !== '1' || !ble.connected || wx.rain < 60) return;
+  if (Date.now() - Number(store('hud.rainlast') || 0) < 3 * 3600000) return;
+  store('hud.rainlast', String(Date.now()));
+  sendNotif(3, 'Regen verwacht ' + wx.rain + '%');
+}
+function wxText() {
+  if (wx.t == null) return '';
+  return Math.round(wx.t) + '°C, ' + tx('الرياح') + ' ' + Math.round(wx.w) + ' km/h, ' + tx('احتمال المطر') + ' ' + wx.rain + '%';
+}
+function renderWx() {
+  const ok = wx.t != null;
+  $('#wxIco').textContent = ok ? WX_ICO(wx.code) : '⛅';
+  $('#wxTemp').textContent = ok ? Math.round(wx.t) + '°C' : '—';
+  $('#wxLine').textContent = ok ? wxText() : (wx.busy ? tx('جاري تحميل الطقس…') : wx.err ? tx('تعذّر تحميل الطقس') : tx('الموقع غير متاح'));
+}
+setInterval(() => { if (!document.hidden && wx.t != null && Date.now() - wx.ts > 900000) wxLoad(false); }, 60000);
+
+/* parking pin */
+let park = jget('hud.park', null);
+async function parkSave() {
+  try {
+    const p = nav.pos ? { lat: nav.pos[0], lon: nav.pos[1] } : (await getCurrentPos()).coords;
+    const la = p.lat != null ? p.lat : p.latitude, lo = p.lon != null ? p.lon : p.longitude;
+    park = { p: [la, lo], t: Date.now() }; jset('hud.park', park); toast(tx('تم حفظ الموقف')); schedule(); return true;
+  } catch (e) { toast(String(e && e.message || e)); return false; }
+}
+function parkGo() {
+  if (!park) { toast(tx('ما في موقف محفوظ')); return false; }
+  setDestination(park.p, 'Parkeerplek'); initMap(); if (map) map.setView(park.p, 16); showTab('nav'); return true;
+}
+function renderPark() {
+  const el = $('#parkInfo'); if (!el) return;
+  el.textContent = park ? tx('محفوظ منذ') + ' ' + new Date(park.t).toLocaleString(LANG === 'ar' ? 'ar' : 'nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : tx('ما في موقف محفوظ');
+  $('#parkGo').disabled = !park;
+}
+
+/* spoken turn-by-turn */
+function guideSay(txt) {
+  if (store('hud.voice') !== '1' || !('speechSynthesis' in window)) return;
+  try { const u = new SpeechSynthesisUtterance(txt); u.lang = LANG === 'ar' ? 'ar-SA' : 'nl-NL'; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch (e) { /* ignore */ }
+}
+function guide(step, distM) {
+  if (store('hud.voice') !== '1') return;
+  const b = distM <= 35 ? 0 : distM <= 120 ? 1 : distM <= 350 ? 2 : 3;
+  const key = nav.nextStep + ':' + b;
+  if (b === 3 || nav.gKey === key) return;
+  nav.gKey = key;
+  const man = manUI()[step.man] || '';
+  const d = b === 2 ? 300 : 100;
+  guideSay(b === 0 ? man : tx('بعد') + ' ' + d + ' ' + tx('متر') + ', ' + man);
+}
+
+/* stats: week chart, calories, CO2 */
+const weightKg = () => clamp(Number(store('hud.weight')) || 70, 30, 200);
+function kcalOf(r) {
+  const h = (r.mov || r.dur) / 3600000, avg = r.mov > 5000 ? (r.d / (r.mov / 1000)) * 3.6 : 0;
+  const met = avg < 6 ? 3.5 : avg < 16 ? 6.8 : avg < 20 ? 8 : avg < 25 ? 10 : avg < 32 ? 12 : 0;
+  return Math.round(met * weightKg() * h);
+}
+function renderWeek() {
+  const box = $('#weekChart'); if (!box) return;
+  const days = []; const base = new Date(); base.setHours(0, 0, 0, 0);
+  for (let i = 6; i >= 0; i--) days.push({ t: base.getTime() - i * 86400000, d: 0 });
+  rides.forEach((r) => { const k = days.findIndex((x) => r.t >= x.t && r.t < x.t + 86400000); if (k >= 0) days[k].d += r.d; });
+  const key = JSON.stringify(days) + LANG + weightKg();
+  if (box.dataset.k === key) return; box.dataset.k = key;
+  const mx = Math.max(1000, ...days.map((x) => x.d)); const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg'); svg.setAttribute('viewBox', '0 0 280 110');
+  days.forEach((x, i) => {
+    const h = Math.round((x.d / mx) * 70), X = 8 + i * 38;
+    const r = document.createElementNS(NS, 'rect'); r.setAttribute('x', X); r.setAttribute('y', 82 - h); r.setAttribute('width', 28); r.setAttribute('height', Math.max(2, h)); r.setAttribute('rx', 5);
+    r.setAttribute('fill', x.d ? 'var(--accent)' : 'var(--line)'); svg.appendChild(r);
+    const v = document.createElementNS(NS, 'text'); v.setAttribute('x', X + 14); v.setAttribute('y', 78 - h); v.setAttribute('text-anchor', 'middle'); v.setAttribute('font-size', 9); v.setAttribute('fill', 'var(--muted)');
+    v.textContent = x.d ? (x.d / 1000).toFixed(1) : ''; svg.appendChild(v);
+    const l = document.createElementNS(NS, 'text'); l.setAttribute('x', X + 14); l.setAttribute('y', 100); l.setAttribute('text-anchor', 'middle'); l.setAttribute('font-size', 10); l.setAttribute('fill', 'var(--muted)');
+    l.textContent = new Date(x.t).toLocaleDateString(LANG === 'ar' ? 'ar' : 'nl-NL', { weekday: 'short' }).slice(0, 3); svg.appendChild(l);
+  });
+  box.textContent = ''; box.appendChild(svg);
+  const wk = rides.filter((r) => r.t >= days[0].t); const km = wk.reduce((a, r) => a + r.d, 0) / 1000;
+  $('#weekTotals').textContent = km.toFixed(1) + ' km · ' + wk.reduce((a, r) => a + kcalOf(r), 0) + ' ' + tx('سعرات') + ' · ' + tx('وفّرت CO₂') + ' ' + (km * 0.12).toFixed(1) + ' kg';
+}
+
+/* GPX export + backup */
+function download(name, mime, text) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+}
+function gpxOf(r) {
+  const pts = (r.pt || []).map((p) => '<trkpt lat="' + p[0] + '" lon="' + p[1] + '"/>').join('');
+  return '<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Smart HUD" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Smart HUD ' + new Date(r.t).toISOString() + '</name><trkseg>' + pts + '</trkseg></trk></gpx>';
+}
+const BK_SKIP = ['hud.aikey', 'hud.ormodels', 'hud.orblock', 'hud.ride'];
+function backupSave() {
+  const o = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.indexOf('hud.') === 0 && BK_SKIP.indexOf(k) < 0) o[k] = localStorage.getItem(k); } } catch (e) { /* ignore */ }
+  download('smart-hud-backup.json', 'application/json', JSON.stringify({ app: 'smart-hud', v: 1, data: o }));
+}
+function backupLoad(file) {
+  const fr = new FileReader();
+  fr.onload = () => {
+    try {
+      const j = JSON.parse(fr.result); if (!j || j.app !== 'smart-hud' || !j.data) throw new Error('bad');
+      Object.keys(j.data).forEach((k) => { if (k.indexOf('hud.') === 0 && BK_SKIP.indexOf(k) < 0) store(k, String(j.data[k])); });
+      toast(tx('تمت الاستعادة')); setTimeout(() => location.reload(), 800);
+    } catch (e) { toast(tx('ملف غير صالح')); }
+  };
+  fr.readAsText(file);
+}
+function renderExtras() {
+  $('#swVoice').checked = store('hud.voice') === '1'; $('#swRain').checked = store('hud.rainalert') === '1';
+  if (document.activeElement !== $('#weightIn')) $('#weightIn').value = weightKg();
+}
+function bindExtras() {
+  $('#wxRefresh').addEventListener('click', () => wxLoad(true));
+  $('#parkSave').addEventListener('click', parkSave);
+  $('#parkGo').addEventListener('click', parkGo);
+  $('#swVoice').addEventListener('change', (e) => { store('hud.voice', e.target.checked ? '1' : '0'); if (e.target.checked) guideSay(tx('التوجيه الصوتي')); });
+  $('#swRain').addEventListener('change', (e) => { store('hud.rainalert', e.target.checked ? '1' : '0'); if (e.target.checked) wxLoad(true); });
+  $('#weightIn').addEventListener('change', (e) => { store('hud.weight', String(clamp(Number(e.target.value) || 70, 30, 200))); schedule(); });
+  $('#bkSave').addEventListener('click', backupSave);
+  $('#bkLoad').addEventListener('click', () => $('#bkFile').click());
+  $('#bkFile').addEventListener('change', (e) => { if (e.target.files[0]) backupLoad(e.target.files[0]); e.target.value = ''; });
+}
+function aiContext() {
+  const bits = ['time ' + new Date().toLocaleString('nl-NL'), 'speed ' + kmh(nav.speedMps) + ' km/h'];
+  if (ble.battery != null) bits.push('glasses battery ' + ble.battery + '%');
+  if (nav.navigating && nav.dest) bits.push('navigating to ' + nav.destName + ', next ' + (nav.last.dist || 0) + ' m, ETA ' + (nav.last.eta === 0xFFFF ? '?' : nav.last.eta + ' min'));
+  if (ride.active) bits.push('ride active ' + fmtDist(ride.dist) + ' in ' + fmtDur(rideElapsed()));
+  if (rides[0]) bits.push('last ride ' + fmtDist(rides[0].d) + ', max ' + kmh(rides[0].max) + ' km/h');
+  if (wx.t != null) bits.push('weather ' + Math.round(wx.t) + 'C wind ' + Math.round(wx.w) + ' km/h rain chance ' + wx.rain + '%');
+  if (park) bits.push('parking spot saved');
+  return bits.join('; ');
 }
 
 /* ============================== phone notifications -> glasses (via ntfy.sh) ============================== */
@@ -1674,6 +1841,7 @@ function onPosition(p, speed, heading, alt) {
   nav.pos = p;
   nav.speedMps = (!isFinite(speed) || speed < 0) ? 0 : speed;
   rideFix(p, nav.speedMps, alt);
+  if (!wx.ts && !wx.busy) wxLoad(false);
   sendGps(heading, alt);
   const r = nav.route;
   if (!nav.navigating || !r) { sendNav(0, 0, 0xFFFF, 0, ''); schedule(); mapUpdate(); return; }
@@ -1701,6 +1869,7 @@ function onPosition(p, speed, heading, alt) {
     schedule(); mapUpdate();
     return;
   }
+  guide(st, distM);
   sendNav(st.man, Math.round(distM), etaMin, st.extra, st.name);
   schedule(); mapUpdate();
 }
@@ -1814,7 +1983,7 @@ async function buildRoute(simulate) {
 async function startNavigation() {
   resetEngine();
   if (!(await buildRoute(false))) return;
-  nav.navigating = true;
+  nav.navigating = true; nav.gKey = '';
   addRecent();
   nav.status = tx('الملاحة شغّالة');
   startStream();
@@ -2041,7 +2210,9 @@ function drawIcon(x, man, extra, cx, cy, col) {
 
 /* ============================== UI binding ============================== */
 const tabs = ['home', 'ride', 'nav', 'set'];
+let curTab = 'home';
 function showTab(name) {
+  curTab = name;
   for (const t of tabs) {
     const pane = $('#tab-' + t);
     pane.hidden = t !== name;
@@ -2050,6 +2221,8 @@ function showTab(name) {
   $$('.tab-btn').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
   if (name === 'nav') { setTimeout(() => { initMap(); if (map) map.invalidateSize(); }, 30); }
   window.scrollTo(0, 0);
+  if (name === 'home') wxMaybe();
+  schedule();
 }
 
 function setSeg(sel, v) { $$(sel + ' button').forEach(b => b.setAttribute('aria-pressed', String(Number(b.dataset.v) === Number(v)))); }
@@ -2069,7 +2242,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.4.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.5.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -2104,23 +2277,22 @@ function render() {
   $('#navEta').textContent = nav.navigating && nav.last.eta !== 0xFFFF ? nav.last.eta + tx(' د') : '—';
   $('#navStatus').textContent = nav.status;
 
-  renderRide();
-  renderFavs();
-  renderPins();
-  renderNtfy();
-  renderHero();
-  renderAiChips();
+  if (curTab === 'ride') renderRide();
+  if (curTab === 'nav') { renderFavs(); renderPins(); renderPark(); }
+  if (curTab === 'set') { renderNtfy(); renderExtras(); }
+  if (curTab === 'home') { renderHero(); renderAiChips(); renderWx(); }
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
   if (nav.status !== lastNavSt) { lastNavSt = nav.status; if (nav.status) dlog('nav: ' + nav.status); }
   const lb = $('#logBox'); const lt = LOG.join('\n');
   if (lb.textContent !== lt) { lb.textContent = lt; lb.scrollTop = lb.scrollHeight; }
-  drawPreview();
+  if (curTab === 'home') drawPreview();
 }
 let lastBleSt = '', lastNavSt = '';
 
 function bind() {
+  bindExtras();
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   $('#btnConnect').addEventListener('click', () => {
@@ -2181,26 +2353,12 @@ function bind() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR) {
     const mic = $('#aiMic'), ml = $('#aiMicLang'); mic.hidden = false; ml.hidden = false;
-    const order = ['nl', 'ar', 'en', 'mix'];
+    const order = ['nl', 'ar', 'en'];
     const micLang = () => store('hud.miclang') || (LANG === 'ar' ? 'ar' : 'nl');
     const showML = () => { ml.textContent = micLang().toUpperCase(); };
     showML();
     ml.addEventListener('click', () => { store('hud.miclang', order[(order.indexOf(micLang()) + 1) % order.length]); showML(); });
-    mic.addEventListener('click', async () => {
-      if (recStop) { recStop(); return; }
-      const key = store('hud.aikey') || '';
-      if (micLang() === 'mix' && key.indexOf('sk-or-') === 0 && navigator.mediaDevices && window.MediaRecorder && Date.now() > Number(store('hud.audiooff') || 0)) {
-        try {
-          const cands = (await orAudioModels()).filter((id) => orBlocked.indexOf(id) < 0);
-          if (cands.length) {
-            mic.textContent = '⏺'; toast(tx('جاري الاستماع…'));
-            const blob = await recordClip(9000); mic.textContent = '🎤';
-            const b64 = await blobToWavB64(blob);
-            aiRun('', { audio: b64, voice: true }); return;
-          }
-          dlog('no free audio model; using browser speech recognition');
-        } catch (e) { mic.textContent = '🎤'; dlog('audio mode failed: ' + (e && e.message)); toast(String(e && e.message || e)); }
-      }
+    mic.addEventListener('click', () => {
       try {
         const r = new SR(); r.lang = SPEECH_LANG[micLang()] || 'ar-SA'; r.interimResults = false; r.maxAlternatives = 1;
         r.onresult = (ev) => { $('#aiIn').value = ''; aiRun(ev.results[0][0].transcript, { voice: true }); };
@@ -2308,7 +2466,7 @@ function boot() {
   }
   if (store('hud.ntfyon') === '1') ntfyStart();
   setInterval(() => { if (ride.active && !ride.paused && !document.hidden) schedule(); }, 1000);
-  showTab('home');
+  const h = (location.hash || '').slice(1); showTab(tabs.indexOf(h) >= 0 ? h : 'home');
   render();
   tryAutoReconnect();
 }
