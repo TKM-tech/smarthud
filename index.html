@@ -542,12 +542,23 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
         <button class="btn danger" id="btnOdo">تصفير العداد الكلي</button>
       </div>
     </div>
+    <div class="card" id="apkCard" hidden>
+      <h2>إشعارات الهاتف (مباشرة بدون وسيط)</h2>
+      <div class="sw"><label for="swNative"><b>قراءة إشعارات كل التطبيقات</b><span class="muted small" id="nativeStat"></span></label><input type="checkbox" id="swNative"></div>
+      <button class="btn primary" id="btnNotifAccess">فتح إذن الوصول للإشعارات</button>
+      <div class="sw"><label for="swKeep"><b>إبقاء التطبيق شغّال بالخلفية</b><span class="muted small">يحافظ على اتصال النظارة والإشعارات حتى لو الشاشة مطفية</span></label><input type="checkbox" id="swKeep"></div>
+      <div class="btns"><button class="btn" id="btnBatt">استثناء من توفير البطارية</button><button class="btn" id="btnNativeTest">إشعار تجريبي</button></div>
+      <div class="muted small">واتساب، انستغرام، تيك توك، تيليغرام، SMS والمكالمات… كلها بتوصل للنظارة. اضغط على اسم التطبيق بقائمة التطبيقات تحت لكتمه.</div>
+    </div>
     <div class="card">
       <h2>إشعارات التطبيقات (انستغرام وغيره)</h2>
       <div class="sw"><label for="ntfySw"><b>استقبال الإشعارات على النظارة</b><span class="muted small" id="ntfyStat"></span></label><input type="checkbox" id="ntfySw"></div>
       <div class="num small" id="ntfyUrl" style="direction:ltr;text-align:left;word-break:break-all"></div>
       <div class="btns"><button class="btn" id="ntfyCopy">نسخ الرابط</button><button class="btn" id="ntfyTest">إشعار تجريبي</button><button class="btn danger" id="ntfyNew">رابط جديد</button></div>
-      <details><summary class="small">كيف أربط انستغرام؟</summary><ol class="small" id="ntfySteps" style="padding-inline-start:20px;margin:8px 0 0"></ol></details>
+      <div class="sw"><label for="ntfyPriv"><b>وضع الخصوصية</b><span class="muted small">يعرض اسم التطبيق فقط بدون نص الرسالة</span></label><input type="checkbox" id="ntfyPriv"></div>
+      <div class="sw"><label for="ntfyWake"><b>إبقاء الشاشة شغّالة</b><span class="muted small">أضمن لاستقبال الإشعارات (بيستهلك بطارية أكتر)</span></label><input type="checkbox" id="ntfyWake"></div>
+      <div class="field"><b>التطبيقات اللي وصلت منها إشعارات</b><div class="chips" id="nApps"></div><div class="muted small" id="nAppsHint"></div></div>
+      <details><summary class="small">كيف أربط كل التطبيقات (واتساب، انستغرام…)؟</summary><ol class="small" id="ntfySteps" style="padding-inline-start:20px;margin:8px 0 0"></ol></details>
     </div>
 
     <div class="card">
@@ -602,6 +613,69 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 'use strict';
+
+/* ============================== Android wrapper bridge (APK only) ============================== */
+const IS_APK = !!(window.AndroidBLE && window.AndroidApp);
+(function () {
+  if (!IS_APK || navigator.bluetooth) return;
+  const pend = {}; let seq = 0, curDev = null; const devs = {}; const chars = {};
+  const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x4000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x4000)); return btoa(s); };
+  const unb64 = (s) => { const bin = atob(s); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
+  const toU8 = (v) => v instanceof ArrayBuffer ? new Uint8Array(v) : new Uint8Array(v.buffer, v.byteOffset, v.byteLength);
+  const NAMES = { battery_service: '0000180f-0000-1000-8000-00805f9b34fb', battery_level: '00002a19-0000-1000-8000-00805f9b34fb' };
+  const uuid = (u) => typeof u === 'number' ? '0000' + u.toString(16).padStart(4, '0') + '-0000-1000-8000-00805f9b34fb' : (NAMES[u] || String(u).toLowerCase());
+  window.__bleCb = (id, ok, data) => {
+    const p = pend[id]; if (!p) return; delete pend[id];
+    if (ok) p.res(data);
+    else { const e = new Error(String(data)); e.name = /^NotFound/.test(String(data)) ? 'NotFoundError' : 'NetworkError'; p.rej(e); }
+  };
+  window.__bleEvt = (type, a, b) => {
+    if (type === 'd') { if (curDev) { curDev.gatt.connected = false; const d = curDev; curDev = null; d.dispatchEvent(new Event('gattserverdisconnected')); } }
+    else if (type === 'n') { const c = chars[a]; if (c) { c.value = new DataView(unb64(b).buffer); c.dispatchEvent(new Event('characteristicvaluechanged')); } }
+  };
+  const call = (m, a) => new Promise((res, rej) => {
+    const id = ++seq; pend[id] = { res, rej };
+    try { window.AndroidBLE.call(id, m, JSON.stringify(a || {})); } catch (e) { delete pend[id]; rej(e); }
+  });
+  class Chr extends EventTarget {
+    constructor(s, c) { super(); this._s = s; this._c = c; this.uuid = c; this.value = null; }
+    async readValue() { const r = await call('read', { s: this._s, c: this._c }); this.value = new DataView(unb64(r).buffer); return this.value; }
+    async writeValueWithResponse(v) { await call('write', { s: this._s, c: this._c, v: b64(toU8(v)), r: 1 }); }
+    async writeValueWithoutResponse(v) { await call('write', { s: this._s, c: this._c, v: b64(toU8(v)), r: 0 }); }
+    async writeValue(v) { return this.writeValueWithResponse(v); }
+    async startNotifications() { chars[this._c] = this; await call('notify', { s: this._s, c: this._c }); return this; }
+  }
+  class Svc { constructor(s) { this._s = s; } async getCharacteristic(c) { const u = uuid(c); await call('has', { s: this._s, c: u }); return new Chr(this._s, u); } }
+  const mkDev = (id, name) => {
+    if (devs[id]) return devs[id];
+    const d = new EventTarget(); d.id = id; d.name = name;
+    d.gatt = {
+      device: d, connected: false,
+      connect: async () => { await call('connect', { a: id }); d.gatt.connected = true; curDev = d; return d.gatt; },
+      disconnect: () => { call('disconnect', {}).catch(() => {}); },
+      getPrimaryService: async (s) => { const u = uuid(s); await call('has', { s: u }); return new Svc(u); }
+    };
+    return (devs[id] = d);
+  };
+  navigator.bluetooth = {
+    requestDevice: async (o) => {
+      let svc = '', nm = '';
+      ((o && o.filters) || []).forEach((f) => { if (f.services && f.services[0]) svc = uuid(f.services[0]); if (f.name) nm = f.name; });
+      const r = JSON.parse(await call('scan', { s: svc, n: nm.slice(0, 9) }));
+      try { localStorage.setItem('hud.apdev', JSON.stringify(r)); } catch (e) { /* ignore */ }
+      return mkDev(r.id, r.name);
+    },
+    getDevices: async () => { try { const r = JSON.parse(localStorage.getItem('hud.apdev') || 'null'); return r && r.id ? [mkDev(r.id, r.name)] : []; } catch (e) { return []; } }
+  };
+  // screen wake lock -> native FLAG_KEEP_SCREEN_ON
+  if (!navigator.wakeLock) {
+    navigator.wakeLock = { request: async () => {
+      window.AndroidApp.keepScreen(true);
+      const t = new EventTarget(); t.release = async () => { window.AndroidApp.keepScreen(false); t.dispatchEvent(new Event('release')); };
+      return t;
+    } };
+  }
+})();
 
 /* ============================== constants ============================== */
 const SVC = 'a3c81000-5d4e-4f1a-9b2c-7e6d5c4b3a21';
@@ -723,6 +797,19 @@ Object.assign(NLD, {
   'المفاتيح السرية (API) ما بتنحفظ بالنسخة.': 'API-sleutels worden niet in de back-up opgenomen.', 'تمت الاستعادة': 'Teruggezet', 'ملف غير صالح': 'Ongeldig bestand',
   'آخر 7 أيام': 'Laatste 7 dagen', 'سعرات': 'kcal', 'وفّرت CO₂': 'CO₂ bespaard', 'بعد': 'Over', 'متر': 'meter', 'ملخص يومي': 'Dagbriefing',
   'الموقع غير متاح': 'Locatie niet beschikbaar', 'مطر قريب': 'Regen komt eraan', 'أدوات إضافية': 'Extra tools',
+});
+Object.assign(NLD, {
+  'وضع الخصوصية': 'Privacymodus', 'يعرض اسم التطبيق فقط بدون نص الرسالة': 'Toont alleen de appnaam, niet de berichttekst',
+  'إبقاء الشاشة شغّالة': 'Scherm aan houden', 'أضمن لاستقبال الإشعارات (بيستهلك بطارية أكتر)': 'Betrouwbaarder meldingen ontvangen (kost meer batterij)',
+  'التطبيقات اللي وصلت منها إشعارات': 'Apps waarvan meldingen binnenkwamen', 'كيف أربط كل التطبيقات (واتساب، انستغرام…)؟': 'Hoe koppel ik alle apps (WhatsApp, Instagram…)?',
+});
+
+Object.assign(NLD, {
+  'إشعارات الهاتف (مباشرة بدون وسيط)': 'Telefoonmeldingen (rechtstreeks, zonder tussenstap)', 'قراءة إشعارات كل التطبيقات': 'Meldingen van alle apps lezen',
+  'فتح إذن الوصول للإشعارات': 'Toegang tot meldingen openen', 'إبقاء التطبيق شغّال بالخلفية': 'App op de achtergrond actief houden',
+  'يحافظ على اتصال النظارة والإشعارات حتى لو الشاشة مطفية': 'Houdt de verbinding met de bril en de meldingen actief, ook met een uit scherm',
+  'استثناء من توفير البطارية': 'Uitzondering voor batterijbesparing', 'إشعار تجريبي': 'Testmelding',
+  'واتساب، انستغرام، تيك توك، تيليغرام، SMS والمكالمات… كلها بتوصل للنظارة. اضغط على اسم التطبيق بقائمة التطبيقات تحت لكتمه.': 'WhatsApp, Instagram, TikTok, Telegram, sms en gesprekken… alles komt op de bril. Tik hieronder op een app om die te dempen.',
 });
 function tx(s) {
   if (LANG === 'ar' || typeof s !== 'string') return s;
@@ -1368,6 +1455,7 @@ function renderWeek() {
 
 /* GPX export + backup */
 function download(name, mime, text) {
+  if (IS_APK) { try { toast(String(window.AndroidApp.saveFile(name, mime, text))); } catch (e) { toast(String(e)); } return; }
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: mime })); a.download = name;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
@@ -1427,32 +1515,48 @@ function ntfyStop() { if (ntfyES) { ntfyES.close(); ntfyES = null; } ntfyOk = fa
 function ntfyStart() {
   ntfyStop();
   try {
-    ntfyES = new EventSource(ntfyUrl() + '/sse?since=' + Math.floor(Date.now() / 1000));
+    const lastTs = Number(store('hud.ntfylast') || 0); const since = Math.max(lastTs, Math.floor(Date.now() / 1000) - 600);
+    ntfyES = new EventSource(ntfyUrl() + '/sse?since=' + (lastTs ? since : Math.floor(Date.now() / 1000)));
     ntfyES.onopen = () => { ntfyOk = true; schedule(); };
     ntfyES.onerror = () => { ntfyOk = false; schedule(); };
     ntfyES.onmessage = (ev) => {
-      try { const m = JSON.parse(ev.data); if (m.event && m.event !== 'message') return; if (m.id && seenNtfy.has(m.id)) return; if (m.id) seenNtfy.add(m.id); forwardNotif(m); } catch (e) { /* ignore */ }
+      try { const m = JSON.parse(ev.data); if (m.event && m.event !== 'message') return; if (m.id && seenNtfy.has(m.id)) return; if (m.id) seenNtfy.add(m.id); if (m.time) store('hud.ntfylast', String(m.time)); forwardNotif(m); } catch (e) { /* ignore */ }
     };
   } catch (e) { dlog('ntfy: ' + e); }
 }
-const APP_LABEL = { instagram: 'IG', whatsapp: 'WA', telegram: 'TG', messenger: 'FB', facebook: 'FB', sms: 'SMS', snapchat: 'SC', signal: 'SG', gmail: 'Mail', mail: 'Mail', tiktok: 'TT' };
+const APP_LABEL = { instagram: 'IG', whatsapp: 'WA', 'whatsappbusiness': 'WA', telegram: 'TG', messenger: 'MSG', facebook: 'FB', sms: 'SMS', messages: 'SMS', snapchat: 'SC', signal: 'SG', gmail: 'Mail', mail: 'Mail', outlook: 'Mail', tiktok: 'TT', x: 'X', twitter: 'X', discord: 'DC', youtube: 'YT', linkedin: 'IN', teams: 'Teams', slack: 'Slack', threads: 'TH', reddit: 'RD', viber: 'VB', line: 'LINE', skype: 'SK' };
+const CHAT_APPS = /(whatsapp|telegram|messenger|signal|sms|messages|snapchat|discord|viber|line|skype|teams|slack|instagram|threads)/;
+const CALL_APPS = /(call|phone|telefoon|dialer|incall|^bel$|مكالمة|هاتف)/;
+let nApps = jget('hud.napps', {});            // app name -> { off: bool, n: count }
+const recentN = [];                           // de-dupe of identical notifications
+function notifPriv() { return store('hud.npriv') === '1'; }
 function forwardNotif(m) {
   let text = String(m.message || '').trim(); let app = String(m.title || '').trim();
   const k = text.indexOf('|');
-  if (k > 0 && k <= 16) { app = text.slice(0, k).trim(); text = text.slice(k + 1).trim(); }
+  if (k > 0 && k <= 24) { app = text.slice(0, k).trim(); text = text.slice(k + 1).trim(); }
+  text = text.replace(/\s+/g, ' ');
   if (!text && !app) return;
   const low = app.toLowerCase();
-  const type = /(call|phone|bel|dialer|مكالمة)/.test(low) ? 1 : /(warn|alarm|alert)/.test(low) ? 4 : 2;
-  const label = APP_LABEL[low.replace(/[^a-z]/g, '')] || app.slice(0, 6);
-  const out = (label ? label + ': ' : '') + text;
-  pendingN.push({ type, text: out.slice(0, 90) });
+  const key = app || '?';
+  const rec = nApps[key] || (nApps[key] = { off: false, n: 0 });
+  rec.n++; Object.keys(nApps).length > 40 && delete nApps[Object.keys(nApps)[0]]; jset('hud.napps', nApps);
+  if (rec.off) { schedule(); return; }
+  const now = Date.now(); const sig = low + '|' + text;
+  while (recentN.length && now - recentN[0].t > 30000) recentN.shift();
+  if (recentN.some((x) => x.s === sig)) return;
+  recentN.push({ t: now, s: sig });
+  const type = CALL_APPS.test(low) ? 1 : /(warn|alarm|alert)/.test(low) ? 4 : CHAT_APPS.test(low) ? 2 : 3;
+  const label = APP_LABEL[low.replace(/[^a-z]/g, '')] || app.slice(0, 8);
+  const body = notifPriv() ? (LANG === 'ar' ? 'رسالة جديدة' : 'Nieuw bericht') : text;
+  const out = (label ? label + ': ' : '') + body;
+  if (type === 1) pendingN.unshift({ type, text: out.slice(0, 90) }); else pendingN.push({ type, text: out.slice(0, 90) });   // calls jump the queue
   if (pendingN.length > 6) pendingN.shift();
-  dlog('notif: ' + out.slice(0, 60));
-  flushPending();
+  dlog('notif: ' + (notifPriv() ? label : out.slice(0, 60)));
+  flushPending(); schedule();
 }
 function flushPending() {
   if (!ble.connected || !pendingN.length) return;
-  const now = Date.now(); if (now - lastFwd < 2500) return;
+  const now = Date.now(); if (now - lastFwd < 2500 && pendingN[0].type !== 1) return;
   lastFwd = now; const n = pendingN.shift();
   sendNotifAuto(n.type, n.text);
 }
@@ -1460,26 +1564,86 @@ setInterval(flushPending, 1500);
 function ntfySteps() {
   const u = ntfyUrl();
   return LANG === 'ar' ? [
-    'ثبّت تطبيق MacroDroid من متجر Play (النسخة المجانية تكفي).',
-    'ماكرو جديد ← المشغّل (Trigger): الإشعارات ← استلام إشعار ← اختر Instagram (وتطبيقات ثانية إذا بدك).',
+    'ثبّت تطبيق MacroDroid من متجر Play (النسخة المجانية تكفي، فيها ماكروهات محدودة وهاد يكفي).',
+    'ماكرو جديد ← المشغّل (Trigger): الإشعارات ← استلام إشعار ← اختر "أي تطبيق" (أو اختر تطبيقات محددة: واتساب، انستغرام، تيليغرام…).',
     'الإجراء (Action): الاتصال ← HTTP Request ← الطريقة POST، الرابط: ' + u,
-    'في خانة المحتوى (Body) اكتب Instagram| ثم اضغط زر {…} وأدخل عنوان الإشعار ونصه (Notification Title / Text). مثال: Instagram|{title}: {text}',
-    'اسمح لـ MacroDroid بالوصول للإشعارات وأوقف توفير البطارية عنه.',
-    'اضغط "إشعار تجريبي" هون. لازم هذا التطبيق يكون مفتوحاً ومتصلاً بالنظارة.',
-    'ملاحظة: النص يمرّ عبر خادم ntfy.sh المجاني. الرابط سرّي، لا تشاركه.'
+    'في خانة المحتوى (Body) اضغط زر {…} (Magic Text) وأدخل اسم التطبيق ثم اكتب | ثم عنوان الإشعار ونصه. الشكل المطلوب: اسم التطبيق|العنوان: النص (مثال: WhatsApp|Ali: وينك؟).',
+    'اسمح لـ MacroDroid بالوصول للإشعارات (Notification Access) وأوقف توفير البطارية عنه.',
+    'اضغط "إشعار تجريبي" هون. كل تطبيق بيبعت إشعار بيظهر تحت بالقائمة وتقدر تكتمه.',
+    'مهم: لازم هاد التطبيق يكون مفتوحاً ومتصلاً بالنظارة. فعّل "إبقاء الشاشة شغّالة" وخلّي Chrome/التطبيق بدون توفير بطارية.',
+    'ملاحظة: النص يمرّ عبر خادم ntfy.sh المجاني. الرابط سرّي، لا تشاركه. وضع الخصوصية بيخفي نص الرسالة.'
   ] : [
     'Installeer MacroDroid uit de Play Store (gratis versie is genoeg).',
-    'Nieuwe macro > Trigger: Meldingen > Melding ontvangen > kies Instagram (en eventueel andere apps).',
+    'Nieuwe macro > Trigger: Meldingen > Melding ontvangen > kies "Alle apps" (of kies specifieke apps: WhatsApp, Instagram, Telegram…).',
     'Actie: Connectiviteit > HTTP-verzoek > methode POST, URL: ' + u,
-    'Bij Body typ je Instagram| en tik daarna op de knop {…} om de titel en tekst van de melding in te voegen (Notification Title / Text). Bijvoorbeeld: Instagram|{title}: {text}',
-    'Geef MacroDroid toegang tot meldingen en zet batterijbesparing voor MacroDroid uit.',
-    'Tik hier op "Testmelding". Deze app moet open staan en met de bril verbonden zijn.',
-    'Let op: de tekst gaat via de gratis server ntfy.sh. De link is geheim, deel hem niet.'
+    'Bij Body tik je op {…} (Magic Text) en voegt in: appnaam, dan het teken |, dan titel en tekst van de melding. Formaat: Appnaam|Titel: Tekst (bijv. WhatsApp|Ali: Waar ben je?).',
+    'Geef MacroDroid toegang tot meldingen (Notification Access) en zet batterijbesparing voor MacroDroid uit.',
+    'Tik hier op "Testmelding". Elke app die een melding stuurt verschijnt hieronder en kun je dempen.',
+    'Belangrijk: deze app moet open staan en met de bril verbonden zijn. Zet "Scherm aan houden" aan en zet batterijbesparing voor Chrome/de app uit.',
+    'Let op: de tekst gaat via de gratis server ntfy.sh. De link is geheim, deel hem niet. Privacymodus verbergt de berichttekst.'
   ];
 }
+function renderNApps() {
+  const box = $('#nApps'); const names = Object.keys(nApps);
+  const key = JSON.stringify(nApps) + LANG; if (box.dataset.k === key) return; box.dataset.k = key; box.textContent = '';
+  $('#nAppsHint').textContent = names.length ? (LANG === 'ar' ? 'اضغط على التطبيق لكتم/إلغاء كتم إشعاراته.' : 'Tik op een app om meldingen te dempen of aan te zetten.') : (LANG === 'ar' ? 'لسا ما وصل شي.' : 'Nog niets ontvangen.');
+  names.forEach((n) => {
+    const ch = document.createElement('button'); ch.className = 'chip'; ch.style.opacity = nApps[n].off ? '0.45' : '1';
+    ch.textContent = (nApps[n].off ? '🔕 ' : '🔔 ') + n + ' · ' + nApps[n].n;
+    ch.addEventListener('click', () => { nApps[n].off = !nApps[n].off; jset('hud.napps', nApps); schedule(); });
+    box.appendChild(ch);
+  });
+}
+/* ---- native Android notifications (APK only) ---- */
+function nativeNotif(o) {
+  if (!IS_APK || store('hud.native') === '0' || !o) return;
+  const app = String(o.app || o.pkg || '').trim(); if (!app) return;
+  const body = ((o.title ? o.title + ': ' : '') + (o.text || '')).trim();
+  if (!body) return;
+  const name = ((o.cat === 'call' && !CALL_APPS.test(app.toLowerCase())) ? 'Call' : app).replace(/\|/g, ' ').slice(0, 24);
+  forwardNotif({ title: name, message: name + '|' + body });
+}
+window.onNativeNotif = nativeNotif;
+let lastKeep = null;
+function apkKeep() {
+  if (!IS_APK) return;
+  const on = store('hud.keep') !== '0' && !!(ble.connected || ble.want || nav.navigating || ride.active);
+  if (on === lastKeep) return; lastKeep = on;
+  try { window.AndroidApp.keepAlive(on); } catch (e) { dlog('keepAlive failed: ' + e); }
+}
+function renderApk() {
+  const card = $('#apkCard'); card.hidden = !IS_APK; if (!IS_APK) return;
+  $('#swNative').checked = store('hud.native') !== '0'; $('#swKeep').checked = store('hud.keep') !== '0';
+  let ok = false; try { ok = !!window.AndroidApp.notifEnabled(); } catch (e) { /* ignore */ }
+  $('#nativeStat').textContent = ok ? (LANG === 'ar' ? 'الإذن مفعّل ✓' : 'Toegang actief ✓') : (LANG === 'ar' ? 'الإذن غير مفعّل: اضغط الزر تحت' : 'Geen toegang: tik op de knop hieronder');
+  $('#btnNotifAccess').hidden = ok;
+}
+function bindApk() {
+  if (!IS_APK) return;
+  $('#swNative').addEventListener('change', (e) => { store('hud.native', e.target.checked ? '1' : '0'); schedule(); });
+  $('#swKeep').addEventListener('change', (e) => { store('hud.keep', e.target.checked ? '1' : '0'); lastKeep = null; schedule(); });
+  $('#btnNotifAccess').addEventListener('click', () => { try { window.AndroidApp.openNotifSettings(); } catch (e) { toast(String(e)); } });
+  $('#btnBatt').addEventListener('click', () => { try { window.AndroidApp.batterySettings(); } catch (e) { toast(String(e)); } });
+  $('#btnNativeTest').addEventListener('click', () => nativeNotif({ app: 'WhatsApp', title: 'Test', text: 'Hallo van Smart HUD', cat: 'msg' }));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) schedule(); });
+}
+/* keep the screen on while notifications should arrive */
+let nWake = null;
+async function nWakeSync() {
+  const want = store('hud.ntfyon') === '1' && store('hud.nwake') === '1' && !document.hidden;
+  try {
+    if (want && 'wakeLock' in navigator && !nWake) { nWake = await navigator.wakeLock.request('screen'); nWake.addEventListener('release', () => { nWake = null; }); }
+    else if (!want && nWake) { nWake.release(); nWake = null; }
+  } catch (e) { nWake = null; }
+}
+document.addEventListener('visibilitychange', () => {
+  nWakeSync();
+  if (!document.hidden && store('hud.ntfyon') === '1' && !ntfyOk) ntfyStart();
+});
 function renderNtfy() {
   const on = store('hud.ntfyon') === '1';
-  $('#ntfySw').checked = on;
+  $('#ntfySw').checked = on; $('#ntfyPriv').checked = notifPriv(); $('#ntfyWake').checked = store('hud.nwake') === '1';
+  renderNApps();
   $('#ntfyUrl').textContent = ntfyUrl();
   $('#ntfyStat').textContent = !on ? (LANG === 'ar' ? 'مطفي' : 'Uit') : ntfyOk ? (LANG === 'ar' ? 'متصل بالخدمة ✓' : 'Verbonden met de dienst ✓') : (LANG === 'ar' ? 'جاري الاتصال…' : 'Verbinden…');
   const ol = $('#ntfySteps'); const k = LANG + ntfyTopic();
@@ -1547,7 +1711,7 @@ const ble = {
 const CMD = { brightness: 0x01, buzzer: 0x02, lang: 0x03, theme: 0x08, limit: 0x09, page: 0x0A,
   vehicle: 0x0B, breakMin: 0x0D, autoNight: 0x0E, eco: 0x11, quiet: 0x12 };
 
-function bleSupported() { return !!(navigator.bluetooth && window.isSecureContext); }
+function bleSupported() { return !!(navigator.bluetooth && (window.isSecureContext || IS_APK)); }
 
 async function writeChar(ch, data, fast) {
   const u = new Uint8Array(data);
@@ -2242,7 +2406,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.5.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.6.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -2279,7 +2443,8 @@ function render() {
 
   if (curTab === 'ride') renderRide();
   if (curTab === 'nav') { renderFavs(); renderPins(); renderPark(); }
-  if (curTab === 'set') { renderNtfy(); renderExtras(); }
+  if (curTab === 'set') { renderNtfy(); renderExtras(); renderApk(); }
+  apkKeep();
   if (curTab === 'home') { renderHero(); renderAiChips(); renderWx(); }
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
   applyTheme();
@@ -2293,6 +2458,7 @@ let lastBleSt = '', lastNavSt = '';
 
 function bind() {
   bindExtras();
+  bindApk();
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
   $('#btnConnect').addEventListener('click', () => {
@@ -2341,7 +2507,9 @@ function bind() {
   $('#pinUndo').addEventListener('click', () => { if (nav.navigating) return; nav.pins.pop(); syncPinDest(); drawPins(); schedule(); });
   $('#pinClear').addEventListener('click', () => { if (nav.navigating) return; nav.pins = []; syncPinDest(); nav.route = null; drawRoute(); drawPins(); schedule(); });
   $('#routeSave').addEventListener('click', saveRoute);
-  $('#ntfySw').addEventListener('change', (e) => { store('hud.ntfyon', e.target.checked ? '1' : '0'); if (e.target.checked) ntfyStart(); else ntfyStop(); schedule(); });
+  $('#ntfySw').addEventListener('change', (e) => { store('hud.ntfyon', e.target.checked ? '1' : '0'); if (e.target.checked) ntfyStart(); else ntfyStop(); nWakeSync(); schedule(); });
+  $('#ntfyPriv').addEventListener('change', (e) => { store('hud.npriv', e.target.checked ? '1' : '0'); });
+  $('#ntfyWake').addEventListener('change', (e) => { store('hud.nwake', e.target.checked ? '1' : '0'); nWakeSync(); });
   $('#ntfyCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ntfyUrl()); toast(tx('تم النسخ')); } catch (e) { toast(ntfyUrl()); } });
   $('#ntfyNew').addEventListener('click', () => { store('hud.ntfy', randomId(18)); seenNtfy.clear(); if (store('hud.ntfyon') === '1') ntfyStart(); schedule(); });
   $('#ntfyTest').addEventListener('click', async () => {
@@ -2351,14 +2519,17 @@ function bind() {
   $('#aiGo').addEventListener('click', aiSend);
   $('#aiIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aiSend(); } });
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SR) {
+  const NSR = IS_APK && typeof window.AndroidApp.startListening === 'function';
+  if (SR || NSR) {
     const mic = $('#aiMic'), ml = $('#aiMicLang'); mic.hidden = false; ml.hidden = false;
+    window.onNativeSpeech = (text, err) => { mic.textContent = '🎤'; if (text) { $('#aiIn').value = ''; aiRun(String(text), { voice: true }); } else if (err) toast(String(err)); };
     const order = ['nl', 'ar', 'en'];
     const micLang = () => store('hud.miclang') || (LANG === 'ar' ? 'ar' : 'nl');
     const showML = () => { ml.textContent = micLang().toUpperCase(); };
     showML();
     ml.addEventListener('click', () => { store('hud.miclang', order[(order.indexOf(micLang()) + 1) % order.length]); showML(); });
     mic.addEventListener('click', () => {
+      if (NSR) { mic.textContent = '…'; try { window.AndroidApp.startListening(SPEECH_LANG[micLang()] || 'ar-SA'); } catch (e) { mic.textContent = '🎤'; toast(String(e)); } return; }
       try {
         const r = new SR(); r.lang = SPEECH_LANG[micLang()] || 'ar-SA'; r.interimResults = false; r.maxAlternatives = 1;
         r.onresult = (ev) => { $('#aiIn').value = ''; aiRun(ev.results[0][0].transcript, { voice: true }); };
@@ -2464,14 +2635,15 @@ function boot() {
   if (sr && sr.a) {
     Object.assign(ride, { active: true, paused: true, t0: sr.t0, accMs: sr.acc, movMs: sr.mov, dist: sr.d, max: sr.m, climb: sr.c });
   }
-  if (store('hud.ntfyon') === '1') ntfyStart();
+  if (store('hud.ntfyon') === '1') { ntfyStart(); nWakeSync(); }
+  if (IS_APK) { try { JSON.parse(window.AndroidApp.drainNotifs() || '[]').forEach(nativeNotif); } catch (e) { dlog('drain failed: ' + e); } }
   setInterval(() => { if (ride.active && !ride.paused && !document.hidden) schedule(); }, 1000);
   const h = (location.hash || '').slice(1); showTab(tabs.indexOf(h) >= 0 ? h : 'home');
   render();
   tryAutoReconnect();
 }
 boot();
-if ('serviceWorker' in navigator && location.protocol === 'https:') {
+if (!IS_APK && 'serviceWorker' in navigator && location.protocol === 'https:') {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }
 </script>

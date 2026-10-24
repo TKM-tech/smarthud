@@ -1,5 +1,5 @@
 // Minimal offline shell: cache the app files, always try the network for everything else (maps, routes).
-const CACHE = 'smarthud-v10';
+const CACHE = 'smarthud-v11';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
