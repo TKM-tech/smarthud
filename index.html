@@ -406,7 +406,7 @@ input[type=text], select {
     <div class="card">
       <div class="field"><b>مفتاح AI (اختياري)</b>
         <input type="password" id="aiKey" placeholder="sk-or-... / sk-ant-..." autocomplete="off" spellcheck="false">
-        <input type="text" id="aiModel" placeholder="OpenRouter model, bv. meta-llama/llama-3.3-70b-instruct:free" autocomplete="off" spellcheck="false" style="direction:ltr">
+        <input type="text" id="aiModel" placeholder="OpenRouter model (leeg = automatisch een gratis model)" autocomplete="off" spellcheck="false" style="direction:ltr">
         <span class="muted small">بدون مفتاح: المساعد يفهم أوامر بسيطة بدون إنترنت. مع مفتاح Anthropic الخاص بك: يفهم أي جملة. المفتاح يبقى فقط بمتصفح هذا الجهاز ويُرسل فقط إلى api.anthropic.com أو openrouter.ai حسب نوع المفتاح (sk-or- = OpenRouter). الاستخدام على حسابك.</span>
         <div class="btns"><button class="btn" id="aiKeySave">حفظ المفتاح</button><button class="btn danger" id="aiKeyDel">حذف المفتاح</button></div>
       </div>
@@ -894,6 +894,33 @@ const AI_SYSTEM = 'You control smart navigation glasses through an app. Reply ON
   'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
   'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}. ' +
   'Use [] when no action fits and just answer in "reply". Never invent actions. Keep replies under 200 characters.';
+async function orFreeModels() {
+  const cache = jget('hud.orfree', null);
+  if (cache && Date.now() - cache.t < 3600000 && cache.ids && cache.ids.length) return cache.ids;
+  const res = await fetch('https://openrouter.ai/api/v1/models');
+  const j = await res.json();
+  const pref = ['llama', 'gemini', 'qwen', 'gpt-oss', 'mistral', 'deepseek', 'gemma'];
+  const free = (j.data || []).filter((m) => m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0 && (m.context_length || 0) >= 8000
+    && !/(vision|image|audio|embed|guard|moderation|:thinking)/i.test(m.id));
+  // "smartest first": bigger parameter count wins, known families get a small bonus, then context length
+  const size = (m) => { const x = /(\d+(?:\.\d+)?)\s*b(?![a-z])/i.exec(m.id); return x ? parseFloat(x[1]) : 0; };
+  const score = (m) => { const k = pref.findIndex((x) => m.id.toLowerCase().includes(x)); return size(m) + (k < 0 ? 0 : (pref.length - k) * 4); };
+  free.sort((a, b) => score(b) - score(a) || (b.context_length || 0) - (a.context_length || 0));
+  const ids = free.map((m) => m.id);
+  jset('hud.orfree', { t: Date.now(), ids });
+  return ids;
+}
+const cool = {};   // model id -> timestamp until which it is skipped (rate limit / not available)
+function coolDown(id, status) { cool[id] = Date.now() + (status === 429 ? 90000 : 1800000); }
+async function orCandidates() {
+  const out = [];
+  const saved = store('hud.aimodel'); if (saved) out.push(saved);
+  try { (await orFreeModels()).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
+  if (!out.length) out.push('meta-llama/llama-3.3-70b-instruct:free');
+  const now = Date.now();
+  const ready = out.filter((id) => !(cool[id] > now));
+  return ready.length ? ready : out;   // if everything is cooling down, just try them all again
+}
 async function aiAsk(text) {
   const key = store('hud.aikey');
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 25000);
@@ -903,15 +930,23 @@ async function aiAsk(text) {
     const orKey = key.indexOf('sk-or-') === 0;
     let res, j, raw;
     if (orKey) {
-      res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST', signal: ctl.signal,
-        headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-Title': 'Smart HUD' },
-        body: JSON.stringify({ model: store('hud.aimodel') || 'meta-llama/llama-3.3-70b-instruct:free', max_tokens: 400, temperature: 0.2,
-          messages: [{ role: 'system', content: sys }].concat(msgs) })
-      });
-      j = await res.json();
-      if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
-      raw = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '{}';
+      const cands = await orCandidates();
+      let lastErr = null; raw = null;
+      for (const mid of cands) {
+        try {
+          res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST', signal: ctl.signal,
+            headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-Title': 'Smart HUD' },
+            body: JSON.stringify({ model: mid, max_tokens: 400, temperature: 0.2, messages: [{ role: 'system', content: sys }].concat(msgs) })
+          });
+          j = await res.json();
+          if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
+          const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
+          if (!c) { lastErr = new Error('empty answer'); continue; }
+          raw = c; store('hud.aimodel', mid); break;
+        } catch (e) { lastErr = e; if (e && e.name === 'AbortError') break; }
+      }
+      if (raw == null) throw new Error((lastErr && lastErr.message ? lastErr.message : 'no model') + ' | https://openrouter.ai/settings/privacy');
     } else {
       res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', signal: ctl.signal,
@@ -1628,7 +1663,7 @@ function render() {
 
   renderRide();
   renderFavs();
-  $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'meta-llama/llama-3.3-70b-instruct:free') : 'Claude') : tx('offline commando\'s');
+  $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
   if (nav.status !== lastNavSt) { lastNavSt = nav.status; if (nav.status) dlog('nav: ' + nav.status); }
