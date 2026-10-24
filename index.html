@@ -203,8 +203,69 @@ input[type=text], select {
 .ai-msg { padding: 8px 12px; border-radius: 12px; background: var(--surface2); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
 .ai-msg.me { background: color-mix(in srgb, var(--accent) 22%, var(--surface2)); }
 .ai-row { display: flex; gap: 8px; }
-.ai-row input { flex: 1; }
+.ai-row { flex-wrap: wrap; }
+.ai-row input { flex: 1 1 100%; }
+.ai-row .btn { flex: 1 1 0; }
 #aiKey { font-family: var(--font-num); }
+
+/* ---- v1.3 visuals ---- */
+body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%); background-repeat: no-repeat; background-color: var(--bg); }
+.tabpane > * { animation: rise .35s ease both; }
+.tabpane > *:nth-child(2) { animation-delay: .04s; } .tabpane > *:nth-child(3) { animation-delay: .08s; }
+.tabpane > *:nth-child(4) { animation-delay: .12s; } .tabpane > *:nth-child(5) { animation-delay: .16s; }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tabpane > * { animation: none; } }
+.tabbar { background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.tab-btn[aria-selected="true"] { box-shadow: 0 -2px 0 var(--accent) inset, 0 6px 18px -8px var(--accent); }
+.btn.primary { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 65%, #7c5cff)); border-color: transparent; box-shadow: 0 6px 18px -8px var(--accent); }
+.hero { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface) 62%); overflow: hidden; }
+.hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.greet { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+#glasses { width: min(100%, 300px); height: auto; margin: 0 auto; display: block; overflow: visible; }
+#glasses .g-frame, #glasses .g-temple, #glasses .g-bridge { fill: none; stroke: var(--muted); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; transition: stroke .3s; }
+#glasses .g-lens { fill: color-mix(in srgb, var(--surface2) 80%, transparent); stroke: none; transition: fill .4s; }
+#glasses .g-arrow { fill: none; stroke: var(--accent); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity .4s; }
+#glasses .g-scan { fill: none; stroke: var(--warn); stroke-width: 3; opacity: 0; transform-origin: 130px 58px; }
+#glasses.g-on .g-frame, #glasses.g-on .g-temple, #glasses.g-on .g-bridge { stroke: var(--accent); filter: drop-shadow(0 0 6px var(--accent)); }
+#glasses.g-on .g-lens { fill: url(#lensG); }
+#glasses.g-on .g-arrow { opacity: 1; animation: nudge 1.8s ease-in-out infinite; }
+#glasses.g-busy .g-scan { opacity: 1; animation: ping 1.2s ease-out infinite; }
+@keyframes nudge { 50% { transform: translateY(-4px); } }
+@keyframes ping { from { transform: scale(.6); opacity: 1; } to { transform: scale(3.2); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #glasses.g-on .g-arrow, #glasses.g-busy .g-scan { animation: none; } }
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tile { display: grid; justify-items: center; gap: 4px; padding: 14px 6px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); font-size: 12.5px; transition: transform .08s, border-color .15s, background .2s; }
+.tile i { font-style: normal; font-size: 24px; line-height: 1; }
+.tile:active { transform: scale(.96); }
+.tile[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 24%, var(--surface)); border-color: var(--accent); }
+.tile:disabled { opacity: .45; }
+.ai-card { background: linear-gradient(180deg, color-mix(in srgb, #7c5cff 12%, var(--surface)), var(--surface) 55%); }
+.ai-tools { display: flex; gap: 6px; }
+.mini { border: 1px solid var(--line); background: var(--surface2); border-radius: 10px; width: 36px; height: 32px; font-size: 15px; }
+.mini[aria-pressed="true"] { border-color: var(--accent); }
+.ai-log { max-height: 340px; }
+.ai-msg { max-width: 92%; text-align: start; border-bottom-left-radius: 4px; }
+.ai-msg.me { justify-self: end; border-bottom-left-radius: 12px; border-bottom-right-radius: 4px; }
+.ai-msg:not(.me) { justify-self: start; }
+.ai-msg.typing { display: inline-flex; gap: 5px; align-items: center; }
+.ai-msg.typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: dots 1s infinite; }
+.ai-msg.typing i:nth-child(2) { animation-delay: .15s; } .ai-msg.typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes dots { 0%, 80%, 100% { opacity: .25; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+.ai-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ai-chips button { border: 1px solid var(--line); background: var(--surface2); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+.badges { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.badge { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 10px 4px; border-radius: 14px; background: var(--surface2); font-size: 11.5px; line-height: 1.25; }
+.badge i { font-style: normal; font-size: 26px; }
+.badge.lock { opacity: .35; filter: grayscale(1); }
+#gTicks line { stroke: var(--line); stroke-width: 2; stroke-linecap: round; }
+#gTicks text { fill: var(--muted); font-size: 8.5px; text-anchor: middle; font-family: var(--font-num); }
+.g-val { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent) 70%, transparent)); }
+.ride-item { grid-template-columns: 64px 1fr auto; align-items: center; }
+.ride-item > .trace { grid-column: 1; grid-row: 1 / span 2; width: 60px; height: 40px; }
+.ride-item > :nth-child(2) { grid-column: 2; grid-row: 1; }
+.ride-item .meta { grid-column: 2 !important; grid-row: 2; }
+.ride-item button { grid-column: 3 !important; }
+.trace path { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 </style>
 </head>
 <body>
@@ -219,13 +280,33 @@ input[type=text], select {
   <section id="tab-home" class="tabpane" aria-label="الرئيسية" style="display:grid;gap:14px">
     <div id="compat" class="notice bad" hidden></div>
 
-    <div class="card">
-      <div class="row">
+    <div class="card hero">
+      <div class="hero-top">
         <div>
-          <div id="connTitle" style="font-weight:700">النظارة</div>
-          <div class="muted small" id="connInfo">اضغط اتصال واختر Smart_HUD_Glasses</div>
+          <div class="greet" id="greet"></div>
+          <div class="muted small" id="heroSub"></div>
         </div>
         <span class="pill num" id="battChip" hidden>🔋 <span id="battVal">--</span>%</span>
+      </div>
+      <svg id="glasses" class="g-off" viewBox="0 0 260 110" role="img" aria-label="النظارة">
+        <defs>
+          <linearGradient id="lensG" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="var(--accent)" stop-opacity=".95"/>
+            <stop offset="1" stop-color="var(--accent)" stop-opacity=".25"/>
+          </linearGradient>
+        </defs>
+        <path class="g-temple" d="M18 38 L4 30 M242 38 L256 30"/>
+        <path class="g-frame" d="M28 30 H100 Q116 30 116 48 V62 Q116 86 92 86 H52 Q28 86 28 62 Z"/>
+        <path class="g-frame" d="M144 48 Q144 30 160 30 H232 V62 Q232 86 208 86 H168 Q144 86 144 62 Z"/>
+        <path class="g-bridge" d="M116 46 Q130 36 144 46"/>
+        <path class="g-lens" d="M34 36 H98 Q110 36 110 49 V61 Q110 80 92 80 H52 Q34 80 34 62 Z"/>
+        <path class="g-lens" d="M150 49 Q150 36 162 36 H226 V62 Q226 80 208 80 H168 Q150 80 150 61 Z"/>
+        <path class="g-arrow" d="M188 74 L188 50 M178 60 L188 48 L198 60"/>
+        <circle class="g-scan" cx="130" cy="58" r="10"/>
+      </svg>
+      <div>
+        <div id="connTitle" style="font-weight:700">النظارة</div>
+        <div class="muted small" id="connInfo">اضغط اتصال واختر Smart_HUD_Glasses</div>
       </div>
       <div class="btns">
         <button class="btn primary" id="btnConnect">اتصال بالنظارة</button>
@@ -233,10 +314,13 @@ input[type=text], select {
       </div>
     </div>
 
-    <div class="card">
-      <h2>معاينة شاشة النظارة</h2>
-      <div class="hud-frame"><canvas id="hud" width="480" height="240" aria-label="معاينة شاشة النظارة"></canvas></div>
-      <div class="muted small">هاي نسخة تقريبية من اللي بتشوفه على النظارة. تشتغل حتى بدون اتصال، جرّب "محاكاة" من تبويب الملاحة.</div>
+    <div class="tiles">
+      <button class="tile" data-act="find"><i>🔔</i><span>دوّر على النظارة</span></button>
+      <button class="tile" data-act="beep"><i>🔊</i><span>صوت تجريبي</span></button>
+      <button class="tile" data-act="demo"><i>✨</i><span>عرض تجريبي</span></button>
+      <button class="tile" id="tileQuiet" aria-pressed="false"><i>🤫</i><span>هدوء</span></button>
+      <button class="tile" id="tileEco" aria-pressed="false"><i>🍃</i><span>توفير</span></button>
+      <button class="tile" id="tileNight" aria-pressed="false"><i>🌙</i><span>ليلي</span></button>
     </div>
 
     <div class="card">
@@ -247,11 +331,14 @@ input[type=text], select {
       <div class="notice warn small">الموقع بالمتصفح بيشتغل والصفحة ظاهرة فقط. خلّي المتصفح مفتوح والشاشة شغالة (التطبيق بيمنع إطفاء الشاشة تلقائياً).</div>
     </div>
 
-    <div class="card">
-      <h2>المساعد الذكي</h2>
+    <div class="card ai-card">
+      <div class="row"><h2>المساعد الذكي</h2>
+        <div class="ai-tools"><button class="mini" id="aiSpeak" aria-pressed="false" aria-label="صوت">🔇</button><button class="mini" id="aiClear" aria-label="مسح">🗑</button></div></div>
       <div class="ai-log" id="aiLog"></div>
+      <div class="ai-chips" id="aiChips"></div>
       <div class="ai-row">
-        <input type="text" id="aiIn" placeholder="مثال: سطوع 50 / وجّهني إلى محطة أمستردام / أرسل رسالة: أنا قادم" autocomplete="off" enterkeyhint="send">
+        <input type="text" id="aiIn" dir="auto" placeholder="اسأل أي شيء أو أعطني أمراً" autocomplete="off" enterkeyhint="send">
+        <button class="btn" id="aiMicLang" aria-label="لغة الميكروفون" hidden>NL</button>
         <button class="btn" id="aiMic" aria-label="ميكروفون" hidden>🎤</button>
         <button class="btn primary" id="aiGo">إرسال</button>
       </div>
@@ -272,6 +359,13 @@ input[type=text], select {
     </div>
 
     <div class="card">
+      <h2>معاينة شاشة النظارة</h2>
+      <div class="hud-frame"><canvas id="hud" width="480" height="240" aria-label="معاينة شاشة النظارة"></canvas></div>
+      <div class="muted small">هاي نسخة تقريبية من اللي بتشوفه على النظارة. تشتغل حتى بدون اتصال، جرّب "محاكاة" من تبويب الملاحة.</div>
+    </div>
+
+
+    <div class="card">
       <h2>آخر حزمة أُرسلت</h2>
       <div class="stats">
         <div class="stat"><span>الحركة</span><b id="lastMan" style="font-family:var(--font-ui);font-size:15px">—</b></div>
@@ -286,6 +380,9 @@ input[type=text], select {
   <section id="tab-ride" class="tabpane" aria-label="الرحلة" hidden style="gap:14px">
     <div class="card gauge-card">
       <svg id="gauge" viewBox="0 0 220 175" role="img" aria-label="السرعة">
+        <defs><linearGradient id="gGrad" gradientUnits="userSpaceOnUse" x1="30" y1="0" x2="190" y2="0">
+          <stop offset="0" stop-color="var(--accent)"/><stop offset=".55" stop-color="var(--accent)"/><stop offset=".82" stop-color="var(--warn)"/><stop offset="1" stop-color="var(--bad)"/></linearGradient></defs>
+        <g id="gTicks"></g>
         <path class="g-track" d="M 53.43 156.57 A 80 80 0 1 1 166.57 156.57" pathLength="100"/>
         <path class="g-val" id="gVal" d="M 53.43 156.57 A 80 80 0 1 1 166.57 156.57" pathLength="100"/>
         <line class="g-lim" id="gLim" x1="0" y1="0" x2="0" y2="0" visibility="hidden"/>
@@ -305,6 +402,10 @@ input[type=text], select {
         <button class="btn" id="rPause" disabled>إيقاف مؤقت</button>
         <button class="btn danger" id="rStop" disabled>إنهاء وحفظ</button>
       </div>
+    </div>
+    <div class="card">
+      <h2>الإنجازات</h2>
+      <div class="badges" id="badges"></div>
     </div>
     <div class="card">
       <h2>سجل الرحلات</h2>
@@ -543,6 +644,8 @@ const NLD = {
   'ما فهمت الأمر': 'Dat heb ik niet begrepen. Probeer: helderheid 50, limiet 30, zoek mijn bril, stuur bericht …',
   'تم': 'Gedaan', 'جاري التفكير…': 'Even denken…', 'تم حفظ المفتاح': 'Sleutel bewaard', 'تم حذف المفتاح': 'Sleutel verwijderd',
   'النظارة غير متصلة': 'Bril niet verbonden', 'الأمر يحتاج اتصال بالنظارة': 'Verbind eerst met de bril',
+  'دوّر على النظارة': 'Zoek bril', 'صوت تجريبي': 'Testgeluid', 'عرض تجريبي': 'Demo', 'هدوء': 'Stil', 'توفير': 'Eco', 'ليلي': 'Nacht',
+  'الإنجازات': 'Prestaties', 'اسأل أي شيء أو أعطني أمراً': 'Vraag me iets of geef een opdracht', 'لغة الميكروفون': 'Microfoontaal', 'صوت': 'Geluid', 'مسح': 'Wissen',
   'وصلت إلى وجهتك 🎉': 'Je bent er! 🎉', 'وضع الهدوء': 'Stille modus',
   'وضع توفير البطارية (Eco)': 'Zuinige modus (Eco)', '🔔 دوّر على نظارتي': '🔔 Zoek mijn bril'
 };
@@ -612,11 +715,11 @@ function jget(key, def) { try { const v = JSON.parse(store(key) || 'null'); retu
 function jset(key, val) { store(key, JSON.stringify(val)); }
 
 /* ============================== ride recorder ============================== */
-const ride = { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0 };
+const ride = { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0, pts: [], lastPt: null };
 let rides = jget('hud.rides', []);
 
 function rideReset() {
-  Object.assign(ride, { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0 });
+  Object.assign(ride, { active: false, paused: false, t0: 0, accMs: 0, lastT: 0, movMs: 0, dist: 0, max: 0, climb: 0, lastP: null, lastAlt: null, lastSave: 0, pts: [], lastPt: null });
   store('hud.ride', '');
 }
 function rideElapsed() { return ride.accMs + (ride.active && !ride.paused && ride.lastT ? Date.now() - ride.lastT : 0); }
@@ -632,6 +735,10 @@ function rideFix(p, speed, alt) {
     if (speed > 0.8 || d > 6) { if (d < 400) ride.dist += d; ride.movMs += Math.min(dt, 5000); }
   }
   ride.lastP = p;
+  if (!ride.lastPt || haversine(ride.lastPt[0], ride.lastPt[1], p[0], p[1]) >= 15) {
+    ride.lastPt = p; ride.pts.push([Math.round(p[0] * 1e5) / 1e5, Math.round(p[1] * 1e5) / 1e5]);
+    if (ride.pts.length > 800) ride.pts = ride.pts.filter((_, i) => i % 2 === 0);
+  }
   if (speed > ride.max && speed < 90) ride.max = speed;
   if (alt != null && isFinite(alt)) {
     if (ride.lastAlt != null && alt - ride.lastAlt >= 3) { ride.climb += alt - ride.lastAlt; ride.lastAlt = alt; }
@@ -658,7 +765,9 @@ function rideStop() {
   if (!ride.active) return;
   const dur = rideElapsed();
   if (ride.dist >= 30 || dur >= 60000) {
-    rides.unshift({ t: ride.t0, dur, mov: ride.movMs, d: Math.round(ride.dist), max: ride.max, c: Math.round(ride.climb) });
+    const stepN = Math.max(1, Math.ceil(ride.pts.length / 90));
+    const pt = ride.pts.filter((_, i) => i % stepN === 0 || i === ride.pts.length - 1);
+    rides.unshift({ t: ride.t0, dur, mov: ride.movMs, d: Math.round(ride.dist), max: ride.max, c: Math.round(ride.climb), pt });
     rides = rides.slice(0, 30); jset('hud.rides', rides);
     toast(tx('تم حفظ الرحلة'));
   }
@@ -673,6 +782,23 @@ function fmtDur(ms) {
 }
 const kmh = (mps) => Math.round(mps * 3.6);
 
+let tickScale = 0;
+function drawTicks(scale) {
+  if (tickScale === scale) return; tickScale = scale;
+  const g = $('#gTicks'); g.textContent = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  const steps = scale === 50 ? 5 : 6;
+  for (let i = 0; i <= steps; i++) {
+    const a = (135 + 270 * (i / steps)) * Math.PI / 180;
+    const ln = document.createElementNS(ns, 'line');
+    ln.setAttribute('x1', (110 + 62 * Math.cos(a)).toFixed(1)); ln.setAttribute('y1', (100 + 62 * Math.sin(a)).toFixed(1));
+    ln.setAttribute('x2', (110 + 68 * Math.cos(a)).toFixed(1)); ln.setAttribute('y2', (100 + 68 * Math.sin(a)).toFixed(1));
+    g.appendChild(ln);
+    const t = document.createElementNS(ns, 'text');
+    t.setAttribute('x', (110 + 52 * Math.cos(a)).toFixed(1)); t.setAttribute('y', (103 + 52 * Math.sin(a)).toFixed(1));
+    t.textContent = String(Math.round(scale * i / steps)); g.appendChild(t);
+  }
+}
 function renderRide() {
   const v = kmh(nav.speedMps);
   const c = ble.cfg;
@@ -681,7 +807,8 @@ function renderRide() {
   const gv = $('#gVal');
   gv.style.strokeDashoffset = String(100 - frac * 100);
   gv.style.opacity = v < 1 ? '0' : '1';
-  gv.style.stroke = c.limit && v > c.limit ? 'var(--bad)' : 'var(--accent)';
+  gv.style.stroke = c.limit && v > c.limit ? 'var(--bad)' : 'url(#gGrad)';
+  drawTicks(scale);
   $('#gSpeed').textContent = String(v);
   $('#gUnit').textContent = tx('كم/س');
   const lim = $('#gLim');
@@ -712,6 +839,7 @@ function renderRide() {
     if (!rides.length) { const e = document.createElement('div'); e.className = 'muted small'; e.textContent = tx('لا توجد رحلات بعد'); list.appendChild(e); }
     rides.forEach((r, i) => {
       const it = document.createElement('div'); it.className = 'ride-item';
+      it.appendChild(traceSvg(r.pt));
       const a = document.createElement('div'); a.className = 'num';
       a.textContent = fmtDist(r.d) + ' · ' + fmtDur(r.dur);
       const m = document.createElement('div'); m.className = 'meta';
@@ -823,8 +951,8 @@ function sendBitmapNotif(type, text) {
 const aiHist = [];
 function aiSay(txt, me) {
   const box = $('#aiLog'); const d = document.createElement('div');
-  d.className = 'ai-msg' + (me ? ' me' : ''); d.textContent = txt; box.appendChild(d);
-  while (box.children.length > 12) box.removeChild(box.firstChild);
+  d.className = 'ai-msg' + (me ? ' me' : ''); d.setAttribute('dir', 'auto'); d.textContent = txt; box.appendChild(d);
+  while (box.children.length > 30) box.removeChild(box.firstChild);
   box.scrollTop = box.scrollHeight;
 }
 function needBle() { if (!ble.connected) { return false; } return true; }
@@ -889,11 +1017,36 @@ function localParse(t) {
   else if (/(test|piep|beep|اختبار)/.test(s)) out.push({ action: 'beep' });
   return out;
 }
-const AI_SYSTEM = 'You control smart navigation glasses through an app. Reply ONLY with compact JSON: {"reply":"short answer in the user\'s language","actions":[...]}. Allowed actions (objects with "action"): ' +
-  'brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
+const AI_SYSTEM = 'You are the assistant inside "Smart HUD", a companion app for navigation glasses. You can (1) chat about ANYTHING (general knowledge, advice, translation, trip ideas, math, writing) and (2) control the glasses. ' +
+  'LANGUAGE RULE: the user often mixes Arabic, Dutch and English in one message. Count the words per language and ALWAYS answer in the language that has the most words in the user\'s message (the app also gives you a hint). Keep names and technical terms as they are. ' +
+  'OUTPUT: reply ONLY with compact JSON {"reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
+  'Allowed actions (objects with "action"): brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
   'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
-  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}. ' +
-  'Use [] when no action fits and just answer in "reply". Never invent actions. Keep replies under 200 characters.';
+  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}.';
+function dominantLang(text) {
+  const words = String(text || '').split(/[\s,.;:!?()\[\]"«»،؛؟]+/).filter(Boolean);
+  let ar = 0, nl = 0, en = 0;
+  const NLW = new Set('de het een ik je jij u wat hoe waar wie naar voor met niet kan wil is zijn mijn ook dat dit van en te om op aan bij maar nog heel geen graag hallo dank dankje alsjeblieft stuur zoek rij ga zet maak geef vertel kun kunnen morgen vandaag weer'.split(' '));
+  const ENW = new Set('the a an is are what how where who to for with not can i you my and of in it this that please hello thanks send find drive go set make give tell could would today tomorrow weather'.split(' '));
+  for (const w of words) {
+    if (ARABIC_RE.test(w)) { ar++; continue; }
+    const l = w.toLowerCase();
+    if (NLW.has(l)) nl++; else if (ENW.has(l)) en++;
+  }
+  if (ar && ar >= nl + en) return 'ar';
+  if (en > nl) return 'en';
+  return nl || en ? 'nl' : (ar ? 'ar' : (LANG === 'ar' ? 'ar' : 'nl'));
+}
+const LANG_NAME = { ar: 'Arabic', nl: 'Dutch', en: 'English' };
+const SPEECH_LANG = { ar: 'ar-SA', nl: 'nl-NL', en: 'en-US' };
+function speak(txt) {
+  if (store('hud.tts') !== '1' || !('speechSynthesis' in window)) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt); u.lang = SPEECH_LANG[dominantLang(txt)] || 'nl-NL';
+    speechSynthesis.speak(u);
+  } catch (e) { /* ignore */ }
+}
 async function orFreeModels() {
   const cache = jget('hud.orfree', null);
   if (cache && Date.now() - cache.t < 3600000 && cache.ids && cache.ids.length) return cache.ids;
@@ -925,7 +1078,7 @@ async function aiAsk(text) {
   const key = store('hud.aikey');
   const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 25000);
   try {
-    const sys = AI_SYSTEM + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
+    const sys = AI_SYSTEM + ' Language hint for this message: mostly ' + LANG_NAME[dominantLang(text)] + '. Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
     const msgs = aiHist.concat([{ role: 'user', content: text }]);
     const orKey = key.indexOf('sk-or-') === 0;
     let res, j, raw;
@@ -937,7 +1090,7 @@ async function aiAsk(text) {
           res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST', signal: ctl.signal,
             headers: { 'content-type': 'application/json', 'Authorization': 'Bearer ' + key, 'X-Title': 'Smart HUD' },
-            body: JSON.stringify({ model: mid, max_tokens: 400, temperature: 0.2, messages: [{ role: 'system', content: sys }].concat(msgs) })
+            body: JSON.stringify({ model: mid, max_tokens: 700, temperature: 0.2, messages: [{ role: 'system', content: sys }].concat(msgs) })
           });
           j = await res.json();
           if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
@@ -951,33 +1104,101 @@ async function aiAsk(text) {
       res = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', signal: ctl.signal,
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 400, system: sys, messages: msgs })
+        body: JSON.stringify({ model: 'claude-sonnet-5-5', max_tokens: 700, system: sys, messages: msgs })
       });
       j = await res.json();
       if (!res.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + res.status));
       raw = (j.content && j.content[0] && j.content[0].text) || '{}';
     }
-    const m = /\{[\s\S]*\}/.exec(raw);
-    const obj = JSON.parse(m ? m[0] : '{}');
+    let obj;
+    try { const m = /\{[\s\S]*\}/.exec(raw); obj = JSON.parse(m ? m[0] : '{}'); if (typeof obj.reply !== 'string' && !Array.isArray(obj.actions)) throw new Error('shape'); }
+    catch (e) { obj = { reply: String(raw).replace(/```[a-z]*/g, '').trim(), actions: [] }; }
     aiHist.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify(obj) });
-    while (aiHist.length > 8) aiHist.shift();
+    while (aiHist.length > 12) aiHist.shift();
     return obj;
   } finally { clearTimeout(to); }
 }
+const T2 = (nl, ar, en) => { const d = dominantLang(aiLastUser); return d === 'ar' ? ar : d === 'en' ? (en || nl) : nl; };
+let aiLastUser = '';
+function aiTyping() {
+  const box = $('#aiLog'); const d = document.createElement('div'); d.className = 'ai-msg typing';
+  d.innerHTML = '<i></i><i></i><i></i>'; box.appendChild(d); box.scrollTop = box.scrollHeight; return d;
+}
 async function aiRun(text) {
   text = text.trim(); if (!text) return;
+  aiLastUser = text;
   aiSay(text, true);
   let obj;
   if (store('hud.aikey')) {
-    aiSay(tx('جاري التفكير…'));
-    try { obj = await aiAsk(text); } catch (e) { $('#aiLog').lastChild.remove(); aiSay('AI: ' + (e && e.message ? e.message : e)); dlog('ai error: ' + (e && e.message)); obj = { actions: localParse(text) }; }
-    if (!$('#aiLog').lastChild.textContent.startsWith('AI:')) $('#aiLog').lastChild.remove();
+    const ty = aiTyping();
+    try { obj = await aiAsk(text); ty.remove(); }
+    catch (e) { ty.remove(); aiSay('AI: ' + (e && e.message ? e.message : e)); dlog('ai error: ' + (e && e.message)); obj = { actions: localParse(text) }; }
   } else obj = { actions: localParse(text) };
   const acts = Array.isArray(obj.actions) ? obj.actions : [];
   const needsBle = acts.some((a) => a.action !== 'navigate' && a.action !== 'ride_start' && a.action !== 'ride_stop' && a.action !== 'nav_stop');
-  if (needsBle && !ble.connected) { aiSay(tx('الأمر يحتاج اتصال بالنظارة')); return; }
+  if (needsBle && !ble.connected) { aiSay(T2('Verbind eerst met de bril.', 'اتصل بالنظارة أولاً.', 'Connect to the glasses first.')); return; }
   let did = 0; acts.forEach((a) => { try { if (actDo(a)) did++; } catch (e) { dlog('action failed ' + e); } });
-  if (obj.reply) aiSay(String(obj.reply)); else if (did) aiSay(tx('تم')); else aiSay(tx('ما فهمت الأمر'));
+  if (obj.reply) { aiSay(String(obj.reply)); speak(String(obj.reply)); }
+  else if (did) aiSay(T2('Gedaan ✓', 'تم ✓', 'Done ✓'));
+  else if (store('hud.aikey')) aiSay(T2('Dat heb ik niet begrepen.', 'ما فهمت.', 'I did not get that.'));
+  else aiSay(T2('Zonder AI-sleutel begrijp ik alleen simpele commando\'s (helderheid 50, limiet 30, zoek mijn bril …). Voeg in Instellingen een gratis OpenRouter-sleutel toe om alles te kunnen vragen.',
+    'بدون مفتاح AI بفهم أوامر بسيطة فقط (سطوع 50، حد 30، دوّر على نظارتي …). أضف مفتاح OpenRouter المجاني من الإعدادات لتسأل أي شيء.',
+    'Without an AI key I only understand simple commands (brightness 50, limit 30, find my glasses …). Add a free OpenRouter key in Settings to ask anything.'));
+}
+function renderAiChips() {
+  const box = $('#aiChips'); if (box.dataset.l === LANG) return; box.dataset.l = LANG; box.textContent = '';
+  const items = LANG === 'ar'
+    ? ['كم باقي لين أوصل؟', 'ترجم: ik ben er bijna', 'أعطني فكرة رحلة بالدراجة', 'سطوع 50', 'دوّر على نظارتي']
+    : ['Hoe laat is het in Dubai?', 'Vertaal naar Arabisch: ik ben er bijna', 'Geef me een fietsroute-idee', 'helderheid 50', 'zoek mijn bril'];
+  items.forEach((t) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', () => aiRun(t)); box.appendChild(b); });
+}
+
+/* ============================== hero, tiles, badges ============================== */
+function renderHero() {
+  const h = new Date().getHours();
+  const nl = h < 6 ? 'Goedenacht' : h < 12 ? 'Goedemorgen' : h < 18 ? 'Goedemiddag' : 'Goedenavond';
+  const ar = h < 12 && h >= 5 ? 'صباح الخير' : h < 18 && h >= 12 ? 'نهارك سعيد' : 'مساء الخير';
+  $('#greet').textContent = (LANG === 'ar' ? ar : nl) + ' 👋';
+  const t = new Date().toLocaleTimeString(LANG === 'ar' ? 'ar' : 'nl-NL', { hour: '2-digit', minute: '2-digit' });
+  const km = rides.reduce((a, r) => a + r.d, 0) / 1000;
+  $('#heroSub').textContent = t + ' · ' + (LANG === 'ar' ? 'مجموع الرحلات ' : 'Totaal gereden ') + km.toFixed(1) + ' km';
+  const g = $('#glasses');
+  g.setAttribute('class', ble.connected ? 'g-on' : ble.busy ? 'g-busy' : 'g-off');
+  const c = ble.cfg;
+  $('#tileQuiet').setAttribute('aria-pressed', String(!!c.quiet));
+  $('#tileEco').setAttribute('aria-pressed', String(c.eco === 2));
+  $('#tileNight').setAttribute('aria-pressed', String(!!c.autoNight));
+  ['#tileQuiet', '#tileEco', '#tileNight'].forEach((q) => { $(q).disabled = !ble.connected; });
+  renderBadges(km);
+}
+function renderBadges(km) {
+  const box = $('#badges'); if (!box) return;
+  const maxKmh = rides.reduce((a, r) => Math.max(a, kmh(r.max)), 0);
+  const longest = rides.reduce((a, r) => Math.max(a, r.d), 0) / 1000;
+  const climb = rides.reduce((a, r) => a + (r.c || 0), 0);
+  const L = (nl, ar) => (LANG === 'ar' ? ar : nl);
+  const list = [
+    [rides.length >= 1, '🚲', L('Eerste rit', 'أول رحلة')], [km >= 10, '📏', L('10 km totaal', '10 كم')],
+    [km >= 50, '🛣️', L('50 km totaal', '50 كم')], [km >= 100, '🏆', L('100 km totaal', '100 كم')],
+    [maxKmh >= 30, '⚡', L('30 km/u', '30 كم/س')], [maxKmh >= 60, '🚀', L('60 km/u', '60 كم/س')],
+    [longest >= 10, '🔥', L('Lange rit 10 km', 'رحلة 10 كم')], [climb >= 100, '⛰️', L('100 m stijging', '100م صعود')]
+  ];
+  const key = JSON.stringify(list.map((x) => [x[0], x[2]]));
+  if (box.dataset.k === key) return; box.dataset.k = key; box.textContent = '';
+  list.forEach((b) => { const d = document.createElement('div'); d.className = 'badge' + (b[0] ? '' : ' lock'); d.innerHTML = '<i>' + b[1] + '</i><span></span>'; d.lastChild.textContent = b[2]; box.appendChild(d); });
+}
+function traceSvg(pts) {
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg'); svg.setAttribute('class', 'trace'); svg.setAttribute('viewBox', '0 0 60 40');
+  if (!pts || pts.length < 2) return svg;
+  const cos = Math.cos(pts[0][0] * Math.PI / 180);
+  const xs = pts.map((p) => p[1] * cos), ys = pts.map((p) => -p[0]);
+  const minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs), minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+  const sc = Math.min(52 / ((maxX - minX) || 1e-9), 32 / ((maxY - minY) || 1e-9));
+  const ox = (60 - (maxX - minX) * sc) / 2, oy = (40 - (maxY - minY) * sc) / 2;
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + (ox + (xs[i] - minX) * sc).toFixed(1) + ' ' + (oy + (ys[i] - minY) * sc).toFixed(1)).join('');
+  const path = document.createElementNS(ns, 'path'); path.setAttribute('d', d); svg.appendChild(path);
+  return svg;
 }
 
 /* ============================== BLE ============================== */
@@ -1366,6 +1587,7 @@ function startStream() {
 }
 
 function stopStream() {
+  nav.speedMps = 0;
   if (nav.watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(nav.watchId);
   nav.watchId = null;
   nav.tracking = false;
@@ -1626,7 +1848,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.2 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.3 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -1663,6 +1885,8 @@ function render() {
 
   renderRide();
   renderFavs();
+  renderHero();
+  renderAiChips();
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
@@ -1723,16 +1947,28 @@ function bind() {
   $('#aiIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aiSend(); } });
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR) {
-    const mic = $('#aiMic'); mic.hidden = false;
+    const mic = $('#aiMic'), ml = $('#aiMicLang'); mic.hidden = false; ml.hidden = false;
+    const order = ['nl', 'ar', 'en'];
+    const micLang = () => store('hud.miclang') || (LANG === 'ar' ? 'ar' : 'nl');
+    const showML = () => { ml.textContent = micLang().toUpperCase(); };
+    showML();
+    ml.addEventListener('click', () => { store('hud.miclang', order[(order.indexOf(micLang()) + 1) % 3]); showML(); });
     mic.addEventListener('click', () => {
       try {
-        const r = new SR(); r.lang = LANG === 'ar' ? 'ar-SA' : 'nl-NL'; r.interimResults = false; r.maxAlternatives = 1;
+        const r = new SR(); r.lang = SPEECH_LANG[micLang()]; r.interimResults = false; r.maxAlternatives = 1;
         r.onresult = (ev) => { $('#aiIn').value = ev.results[0][0].transcript; aiSend(); };
         r.onerror = () => { mic.textContent = '🎤'; }; r.onend = () => { mic.textContent = '🎤'; };
         mic.textContent = '…'; r.start();
       } catch (e) { toast(String(e)); }
     });
   }
+  const sp = $('#aiSpeak');
+  sp.setAttribute('aria-pressed', String(store('hud.tts') === '1')); sp.textContent = store('hud.tts') === '1' ? '🔊' : '🔇';
+  sp.addEventListener('click', () => { const on = store('hud.tts') !== '1'; store('hud.tts', on ? '1' : '0'); sp.setAttribute('aria-pressed', String(on)); sp.textContent = on ? '🔊' : '🔇'; if (!on && window.speechSynthesis) speechSynthesis.cancel(); });
+  $('#aiClear').addEventListener('click', () => { $('#aiLog').textContent = ''; aiHist.length = 0; });
+  $('#tileQuiet').addEventListener('click', () => { if (ble.connected) setCfg('quiet', !ble.cfg.quiet); });
+  $('#tileEco').addEventListener('click', () => { if (ble.connected) setCfg('eco', ble.cfg.eco === 2 ? 1 : 2); });
+  $('#tileNight').addEventListener('click', () => { if (ble.connected) setCfg('autoNight', !ble.cfg.autoNight); });
   $('#aiKeySave').addEventListener('click', () => { const v = $('#aiKey').value.trim(); if (v) { store('hud.aikey', v); const mv = $('#aiModel').value.trim(); if (mv) store('hud.aimodel', mv); $('#aiKey').value = ''; toast(tx('تم حفظ المفتاح')); schedule(); } });
   $('#aiModel').value = store('hud.aimodel') || '';
   $('#aiKeyDel').addEventListener('click', () => { try { localStorage.removeItem('hud.aikey'); } catch (e) { /* ignore */ } toast(tx('تم حذف المفتاح')); schedule(); });
