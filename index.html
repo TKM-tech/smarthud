@@ -277,6 +277,18 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
 #weekChart svg { width: 100%; height: auto; display: block; }
 .gpxb { margin-inline-start: 6px; }
+.ap-wrap { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: flex; align-items: flex-end; justify-content: center; }
+.ap-wrap[hidden] { display: none; }
+.ap-box { background: var(--surface); border: 1px solid var(--line); border-radius: 18px 18px 0 0; width: 100%; max-width: 560px; max-height: 88vh; display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 18px; }
+#apList { overflow-y: auto; flex: 1; min-height: 120px; }
+.ap-item { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-top: 1px solid var(--line); font-size: 14.5px; }
+.ap-item input { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.ap-item small { color: var(--muted); direction: ltr; margin-inline-start: auto; font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 40%; white-space: nowrap; }
+input[type=search], input[type=time], input.txt { width: 100%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface2); color: var(--fg); font: inherit; }
+.tm { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ib { display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.ib .m { grid-column: 2; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ib b { direction: auto; }
 </style>
 </head>
 <body>
@@ -340,6 +352,11 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
         <input type="checkbox" id="swTrack">
       </div>
       <div class="notice warn small">الموقع بالمتصفح بيشتغل والصفحة ظاهرة فقط. خلّي المتصفح مفتوح والشاشة شغالة (التطبيق بيمنع إطفاء الشاشة تلقائياً).</div>
+    </div>
+
+    <div class="card" id="inboxCard" hidden>
+      <div class="row"><h2>آخر الإشعارات</h2><button class="mini" id="inboxClear" aria-label="مسح">🗑</button></div>
+      <div id="inboxList"></div>
     </div>
 
     <div class="card" id="wxCard">
@@ -544,11 +561,20 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
     </div>
     <div class="card" id="apkCard" hidden>
       <h2>إشعارات الهاتف (مباشرة بدون وسيط)</h2>
-      <div class="sw"><label for="swNative"><b>قراءة إشعارات كل التطبيقات</b><span class="muted small" id="nativeStat"></span></label><input type="checkbox" id="swNative"></div>
+      <div class="sw"><label for="swNative"><b>تفعيل إشعارات الهاتف</b><span class="muted small" id="nativeStat"></span></label><input type="checkbox" id="swNative"></div>
       <button class="btn primary" id="btnNotifAccess">فتح إذن الوصول للإشعارات</button>
       <div class="sw"><label for="swKeep"><b>إبقاء التطبيق شغّال بالخلفية</b><span class="muted small">يحافظ على اتصال النظارة والإشعارات حتى لو الشاشة مطفية</span></label><input type="checkbox" id="swKeep"></div>
+      <div class="field"><b>التطبيقات اللي بدي إشعاراتها</b>
+        <button class="btn primary" id="btnPickApps">اختيار التطبيقات</button>
+        <div class="muted small" id="apSummary"></div></div>
+      <div class="sw"><label for="swQuiet"><b>ساعات الهدوء</b><span class="muted small">ما تنبعت إشعارات بهالوقت (إلا المكالمات والأشخاص المهمين)</span></label><input type="checkbox" id="swQuiet"></div>
+      <div class="tm"><input type="time" id="qh1" value="23:00"><input type="time" id="qh2" value="07:00"></div>
+      <div class="sw"><label for="swRideOnly"><b>فقط وقت الرحلة</b><span class="muted small">الإشعارات بتوصل للنظارة بس لما تكون عم تمشي أو عم تستخدم الملاحة</span></label><input type="checkbox" id="swRideOnly"></div>
+      <div class="sw"><label for="swRead"><b>قراءة الإشعارات بصوت عالي</b><span class="muted small">مفيد مع السماعات</span></label><input type="checkbox" id="swRead"></div>
+      <div class="field"><b>أشخاص مهمين (VIP)</b><input type="text" class="txt" id="vipIn" dir="auto" placeholder="mama, papa, ..." autocomplete="off"><span class="muted small">إشعاراتهم بتوصل دايماً حتى بساعات الهدوء</span></div>
+      <div class="field"><b>كلمات محظورة</b><input type="text" class="txt" id="blockIn" dir="auto" placeholder="promo, korting, ..." autocomplete="off"><span class="muted small">أي إشعار فيه هالكلمات ما بينبعت</span></div>
       <div class="btns"><button class="btn" id="btnBatt">استثناء من توفير البطارية</button><button class="btn" id="btnNativeTest">إشعار تجريبي</button></div>
-      <div class="muted small">واتساب، انستغرام، تيك توك، تيليغرام، SMS والمكالمات… كلها بتوصل للنظارة. اضغط على اسم التطبيق بقائمة التطبيقات تحت لكتمه.</div>
+      <div class="muted small">التطبيق بيقرأ بس إشعارات التطبيقات اللي بتختارها. الباقي بيتجاهله من الأساس.</div>
     </div>
     <div class="card">
       <h2>إشعارات التطبيقات (انستغرام وغيره)</h2>
@@ -611,6 +637,15 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div class="ap-wrap" id="appPicker" hidden>
+  <div class="ap-box">
+    <div class="row"><h2>اختيار التطبيقات</h2><button class="mini" id="apClose" aria-label="إغلاق">✕</button></div>
+    <input type="search" id="apQ" dir="auto" placeholder="ابحث عن تطبيق…" autocomplete="off">
+    <div class="btns"><button class="btn" id="apPreset">التطبيقات الشائعة</button><button class="btn" id="apNone">إلغاء الكل</button></div>
+    <div id="apList"></div>
+    <button class="btn primary" id="apDone">تم</button>
+  </div>
+</div>
 <script>
 'use strict';
 
@@ -810,6 +845,17 @@ Object.assign(NLD, {
   'يحافظ على اتصال النظارة والإشعارات حتى لو الشاشة مطفية': 'Houdt de verbinding met de bril en de meldingen actief, ook met een uit scherm',
   'استثناء من توفير البطارية': 'Uitzondering voor batterijbesparing', 'إشعار تجريبي': 'Testmelding',
   'واتساب، انستغرام، تيك توك، تيليغرام، SMS والمكالمات… كلها بتوصل للنظارة. اضغط على اسم التطبيق بقائمة التطبيقات تحت لكتمه.': 'WhatsApp, Instagram, TikTok, Telegram, sms en gesprekken… alles komt op de bril. Tik hieronder op een app om die te dempen.',
+});
+
+Object.assign(NLD, {
+  'التطبيقات اللي بدي إشعاراتها': 'Apps waarvan ik meldingen wil', 'اختيار التطبيقات': 'Apps kiezen', 'ساعات الهدوء': 'Stille uren',
+  'ما تنبعت إشعارات بهالوقت (إلا المكالمات والأشخاص المهمين)': 'Geen meldingen in deze periode (behalve gesprekken en VIP\'s)',
+  'فقط وقت الرحلة': 'Alleen tijdens de rit', 'الإشعارات بتوصل للنظارة بس لما تكون عم تمشي أو عم تستخدم الملاحة': 'Meldingen komen alleen op de bril als je onderweg bent of navigeert',
+  'قراءة الإشعارات بصوت عالي': 'Meldingen hardop voorlezen', 'مفيد مع السماعات': 'Handig met oortjes',
+  'أشخاص مهمين (VIP)': 'Belangrijke personen (VIP)', 'إشعاراتهم بتوصل دايماً حتى بساعات الهدوء': 'Hun meldingen komen altijd door, ook tijdens stille uren',
+  'كلمات محظورة': 'Geblokkeerde woorden', 'أي إشعار فيه هالكلمات ما بينبعت': 'Meldingen met deze woorden worden niet doorgestuurd',
+  'تفعيل إشعارات الهاتف': 'Telefoonmeldingen inschakelen', 'التطبيق بيقرأ بس إشعارات التطبيقات اللي بتختارها. الباقي بيتجاهله من الأساس.': 'De app leest alleen meldingen van de apps die jij kiest. De rest wordt direct genegeerd.',
+  'آخر الإشعارات': 'Laatste meldingen', 'ابحث عن تطبيق…': 'Zoek een app…', 'التطبيقات الشائعة': 'Populaire apps', 'إلغاء الكل': 'Alles wissen', 'إغلاق': 'Sluiten',
 });
 function tx(s) {
   if (LANG === 'ar' || typeof s !== 'string') return s;
@@ -1595,13 +1641,80 @@ function renderNApps() {
   });
 }
 /* ---- native Android notifications (APK only) ---- */
+let allowApps = jget('hud.allow', []);          // package names the user picked
+let seenPk = jget('hud.seenpk', {});
+let inbox = jget('hud.inbox', []);
+const POPULAR_PK = ['com.whatsapp', 'com.whatsapp.w4b', 'com.instagram.android', 'com.facebook.orca', 'com.facebook.katana', 'org.telegram.messenger', 'com.snapchat.android',
+  'com.zhiliaoapp.musically', 'com.google.android.gm', 'com.google.android.apps.messaging', 'com.samsung.android.messaging', 'com.google.android.dialer',
+  'com.samsung.android.dialer', 'com.android.dialer', 'com.twitter.android', 'com.discord', 'org.thoughtcrime.securesms'];
+function pushAllow() { if (IS_APK) { try { window.AndroidApp.setAllowed(JSON.stringify(allowApps)); } catch (e) { dlog('setAllowed failed: ' + e); } } }
+const csv = (k) => (store(k) || '').toLowerCase().split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
+function inQuiet() {
+  if (store('hud.qh') !== '1') return false;
+  const m = (t) => { const x = String(t).split(':'); return (Number(x[0]) || 0) * 60 + (Number(x[1]) || 0); };
+  const a = m(store('hud.qh1') || '23:00'), b = m(store('hud.qh2') || '07:00'); const n = new Date(); const c = n.getHours() * 60 + n.getMinutes();
+  return a === b ? false : a < b ? (c >= a && c < b) : (c >= a || c < b);
+}
+const isMoving = () => nav.speedMps > 2 || nav.navigating || ride.active;
+function inboxAdd(app, body, st) {
+  inbox.unshift({ t: Date.now(), a: app, x: body.slice(0, 120), s: st }); if (inbox.length > 40) inbox.length = 40; jset('hud.inbox', inbox); schedule();
+}
+function sayAloud(txt) { try { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(txt); u.lang = LANG === 'ar' ? 'ar-SA' : 'nl-NL'; speechSynthesis.cancel(); speechSynthesis.speak(u); } } catch (e) { /* ignore */ } }
 function nativeNotif(o) {
   if (!IS_APK || store('hud.native') === '0' || !o) return;
   const app = String(o.app || o.pkg || '').trim(); if (!app) return;
   const body = ((o.title ? o.title + ': ' : '') + (o.text || '')).trim();
   if (!body) return;
-  const name = ((o.cat === 'call' && !CALL_APPS.test(app.toLowerCase())) ? 'Call' : app).replace(/\|/g, ' ').slice(0, 24);
-  forwardNotif({ title: name, message: name + '|' + body });
+  const test = o.pkg === 'test';
+  if (o.pkg && !test) {
+    if (seenPk[o.pkg] !== app) { seenPk[o.pkg] = app; jset('hud.seenpk', seenPk); }
+    if (allowApps.indexOf(o.pkg) < 0) return;                       // not one of the chosen apps
+  }
+  const call = o.cat === 'call';
+  const name = ((call && !CALL_APPS.test(app.toLowerCase())) ? 'Call' : app).replace(/\|/g, ' ').slice(0, 24);
+  const hay = ((o.title || '') + ' ' + (o.text || '')).toLowerCase();
+  if (!test && csv('hud.block').some((w) => hay.indexOf(w) >= 0)) { inboxAdd(name, body, 'blocked'); return; }
+  const vip = csv('hud.vip').some((w) => hay.indexOf(w) >= 0);
+  if (!test && !vip && !call) {
+    if (inQuiet()) { inboxAdd(name, body, 'quiet'); return; }
+    if (store('hud.rideonly') === '1' && !isMoving()) { inboxAdd(name, body, 'held'); return; }
+  }
+  inboxAdd(name, body, 'sent');
+  if (store('hud.readaloud') === '1') sayAloud(name + '. ' + body);
+  forwardNotif({ title: name, message: name + '|' + (vip ? 'VIP ' : '') + body });
+}
+let appList = null;
+function loadApps() {
+  if (appList) return appList;
+  let l = []; try { l = JSON.parse(window.AndroidApp.listApps() || '[]'); } catch (e) { l = []; }
+  const have = {}; l.forEach((a) => { have[a.pkg] = 1; });
+  Object.keys(seenPk).forEach((p) => { if (!have[p]) l.push({ pkg: p, label: seenPk[p] }); });
+  l.sort((a, b) => a.label.toLowerCase() < b.label.toLowerCase() ? -1 : 1);
+  return (appList = l);
+}
+function renderPicker() {
+  const box = $('#apList'); const q = ($('#apQ').value || '').toLowerCase(); box.textContent = '';
+  loadApps().filter((a) => !q || a.label.toLowerCase().indexOf(q) >= 0 || a.pkg.indexOf(q) >= 0).forEach((a) => {
+    const r = document.createElement('label'); r.className = 'ap-item';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.checked = allowApps.indexOf(a.pkg) >= 0;
+    c.addEventListener('change', () => { allowApps = allowApps.filter((x) => x !== a.pkg); if (c.checked) allowApps.push(a.pkg); jset('hud.allow', allowApps); pushAllow(); schedule(); });
+    const t = document.createElement('span'); t.textContent = a.label; t.setAttribute('dir', 'auto');
+    const k = document.createElement('small'); k.textContent = a.pkg;
+    r.append(c, t, k); box.appendChild(r);
+  });
+}
+function renderInbox() {
+  const card = $('#inboxCard'); card.hidden = !IS_APK || !inbox.length; if (card.hidden) return;
+  const key = JSON.stringify(inbox) + LANG; const box = $('#inboxList'); if (box.dataset.k === key) return; box.dataset.k = key; box.textContent = '';
+  const ST = { sent: '✓', quiet: '🌙', held: '⏸', blocked: '⛔' };
+  inbox.slice(0, 15).forEach((e) => {
+    const r = document.createElement('div'); r.className = 'ib';
+    const tm = document.createElement('span'); tm.className = 'num'; tm.textContent = new Date(e.t).toLocaleTimeString(LANG === 'ar' ? 'ar' : 'nl-NL', { hour: '2-digit', minute: '2-digit' });
+    const a = document.createElement('b'); a.textContent = e.a;
+    const st = document.createElement('span'); st.textContent = ST[e.s] || '';
+    const m = document.createElement('div'); m.className = 'm'; m.textContent = e.x; m.setAttribute('dir', 'auto');
+    r.append(tm, a, st, m); box.appendChild(r);
+  });
 }
 window.onNativeNotif = nativeNotif;
 let lastKeep = null;
@@ -1614,6 +1727,9 @@ function apkKeep() {
 function renderApk() {
   const card = $('#apkCard'); card.hidden = !IS_APK; if (!IS_APK) return;
   $('#swNative').checked = store('hud.native') !== '0'; $('#swKeep').checked = store('hud.keep') !== '0';
+  $('#swQuiet').checked = store('hud.qh') === '1'; $('#swRideOnly').checked = store('hud.rideonly') === '1'; $('#swRead').checked = store('hud.readaloud') === '1';
+  for (const [id, k, d] of [['qh1', 'hud.qh1', '23:00'], ['qh2', 'hud.qh2', '07:00'], ['vipIn', 'hud.vip', ''], ['blockIn', 'hud.block', '']]) { const el = $('#' + id); if (document.activeElement !== el) el.value = store(k) || d; }
+  $('#apSummary').textContent = allowApps.length ? (LANG === 'ar' ? 'مختار: ' + allowApps.length + ' تطبيق' : allowApps.length + ' app(s) gekozen') : (LANG === 'ar' ? 'ما اخترت أي تطبيق بعد: ما رح توصل إشعارات' : 'Nog geen apps gekozen: er komen geen meldingen door');
   let ok = false; try { ok = !!window.AndroidApp.notifEnabled(); } catch (e) { /* ignore */ }
   $('#nativeStat').textContent = ok ? (LANG === 'ar' ? 'الإذن مفعّل ✓' : 'Toegang actief ✓') : (LANG === 'ar' ? 'الإذن غير مفعّل: اضغط الزر تحت' : 'Geen toegang: tik op de knop hieronder');
   $('#btnNotifAccess').hidden = ok;
@@ -1624,7 +1740,22 @@ function bindApk() {
   $('#swKeep').addEventListener('change', (e) => { store('hud.keep', e.target.checked ? '1' : '0'); lastKeep = null; schedule(); });
   $('#btnNotifAccess').addEventListener('click', () => { try { window.AndroidApp.openNotifSettings(); } catch (e) { toast(String(e)); } });
   $('#btnBatt').addEventListener('click', () => { try { window.AndroidApp.batterySettings(); } catch (e) { toast(String(e)); } });
-  $('#btnNativeTest').addEventListener('click', () => nativeNotif({ app: 'WhatsApp', title: 'Test', text: 'Hallo van Smart HUD', cat: 'msg' }));
+  $('#btnNativeTest').addEventListener('click', () => nativeNotif({ app: 'WhatsApp', pkg: 'test', title: 'Test', text: 'Hallo van Smart HUD', cat: 'msg' }));
+  const tgl = (id, k) => $(id).addEventListener('change', (e) => { store(k, e.target.checked ? '1' : '0'); schedule(); });
+  tgl('#swQuiet', 'hud.qh'); tgl('#swRideOnly', 'hud.rideonly'); tgl('#swRead', 'hud.readaloud');
+  const txt = (id, k) => $(id).addEventListener('change', (e) => { store(k, e.target.value); schedule(); });
+  txt('#qh1', 'hud.qh1'); txt('#qh2', 'hud.qh2'); txt('#vipIn', 'hud.vip'); txt('#blockIn', 'hud.block');
+  const open = (on) => { $('#appPicker').hidden = !on; if (on) { $('#apQ').value = ''; renderPicker(); } };
+  $('#btnPickApps').addEventListener('click', () => open(true));
+  $('#apClose').addEventListener('click', () => open(false)); $('#apDone').addEventListener('click', () => open(false));
+  $('#apQ').addEventListener('input', renderPicker);
+  $('#apNone').addEventListener('click', () => { allowApps = []; jset('hud.allow', allowApps); pushAllow(); renderPicker(); schedule(); });
+  $('#apPreset').addEventListener('click', () => {
+    const have = {}; loadApps().forEach((a) => { have[a.pkg] = 1; });
+    POPULAR_PK.forEach((p) => { if (have[p] && allowApps.indexOf(p) < 0) allowApps.push(p); });
+    jset('hud.allow', allowApps); pushAllow(); renderPicker(); schedule();
+  });
+  $('#inboxClear').addEventListener('click', () => { inbox = []; jset('hud.inbox', inbox); schedule(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) schedule(); });
 }
 /* keep the screen on while notifications should arrive */
@@ -2406,7 +2537,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.6.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.7.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -2445,7 +2576,7 @@ function render() {
   if (curTab === 'nav') { renderFavs(); renderPins(); renderPark(); }
   if (curTab === 'set') { renderNtfy(); renderExtras(); renderApk(); }
   apkKeep();
-  if (curTab === 'home') { renderHero(); renderAiChips(); renderWx(); }
+  if (curTab === 'home') { renderHero(); renderAiChips(); renderWx(); renderInbox(); }
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
   applyTheme();
   if (ble.status !== lastBleSt) { lastBleSt = ble.status; if (ble.status) dlog('ble: ' + ble.status); }
@@ -2636,7 +2767,7 @@ function boot() {
     Object.assign(ride, { active: true, paused: true, t0: sr.t0, accMs: sr.acc, movMs: sr.mov, dist: sr.d, max: sr.m, climb: sr.c });
   }
   if (store('hud.ntfyon') === '1') { ntfyStart(); nWakeSync(); }
-  if (IS_APK) { try { JSON.parse(window.AndroidApp.drainNotifs() || '[]').forEach(nativeNotif); } catch (e) { dlog('drain failed: ' + e); } }
+  if (IS_APK) { pushAllow(); try { JSON.parse(window.AndroidApp.drainNotifs() || '[]').forEach(nativeNotif); } catch (e) { dlog('drain failed: ' + e); } }
   setInterval(() => { if (ride.active && !ride.paused && !document.hidden) schedule(); }, 1000);
   const h = (location.hash || '').slice(1); showTab(tabs.indexOf(h) >= 0 ? h : 'home');
   render();
