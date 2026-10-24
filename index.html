@@ -266,6 +266,11 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
 .ride-item .meta { grid-column: 2 !important; grid-row: 2; }
 .ride-item button { grid-column: 3 !important; }
 .trace path { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+#customCard { gap: 10px; }
+#customBox.on { display: grid !important; }
+.pinbadge { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 13px var(--font-num); border: 2px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,.4); }
+.pinbadge.last { background: var(--bad); color: #fff; }
 </style>
 </head>
 <body>
@@ -343,6 +348,7 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
         <button class="btn primary" id="aiGo">إرسال</button>
       </div>
       <div class="muted small" id="aiMode"></div>
+      <div class="muted small" id="aiHint">للكلام بعربي وهولندي مع بعض: اضغط على زر اللغة حتى يصير MIX ثم 🎤 (واضغط 🎤 مرة ثانية لإنهاء التسجيل).</div>
     </div>
 
     <div class="card">
@@ -432,6 +438,16 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
       <div class="chips" id="recChips"></div>
     </div>
 
+    <div class="card" id="customCard">
+      <div class="seg" id="modeSeg"><button data-v="0" aria-pressed="true">عادي</button><button data-v="1" aria-pressed="false">📍 مسار مخصص</button></div>
+      <div id="customBox" hidden style="display:none;gap:10px">
+        <div class="muted small">اضغط على الخريطة لإضافة دبابيس بالترتيب. آخر دبوس هو الوجهة.</div>
+        <div class="chips" id="pinChips"></div>
+        <div class="btns"><button class="btn" id="pinUndo">↩ تراجع</button><button class="btn danger" id="pinClear">مسح الدبابيس</button><button class="btn" id="routeSave">⭐ حفظ المسار</button></div>
+        <div class="chips" id="routeChips"></div>
+      </div>
+    </div>
+
     <div id="map" role="application" aria-label="الخريطة"></div>
 
     <div class="card">
@@ -504,6 +520,14 @@ body { background-image: radial-gradient(900px 420px at 50% -80px, color-mix(in 
         <button class="btn danger" id="btnOdo">تصفير العداد الكلي</button>
       </div>
     </div>
+    <div class="card">
+      <h2>إشعارات التطبيقات (انستغرام وغيره)</h2>
+      <div class="sw"><label for="ntfySw"><b>استقبال الإشعارات على النظارة</b><span class="muted small" id="ntfyStat"></span></label><input type="checkbox" id="ntfySw"></div>
+      <div class="num small" id="ntfyUrl" style="direction:ltr;text-align:left;word-break:break-all"></div>
+      <div class="btns"><button class="btn" id="ntfyCopy">نسخ الرابط</button><button class="btn" id="ntfyTest">إشعار تجريبي</button><button class="btn danger" id="ntfyNew">رابط جديد</button></div>
+      <details><summary class="small">كيف أربط انستغرام؟</summary><ol class="small" id="ntfySteps" style="padding-inline-start:20px;margin:8px 0 0"></ol></details>
+    </div>
+
     <div class="card">
       <div class="field"><b>مفتاح AI (اختياري)</b>
         <input type="password" id="aiKey" placeholder="sk-or-... / sk-ant-..." autocomplete="off" spellcheck="false">
@@ -646,6 +670,11 @@ const NLD = {
   'النظارة غير متصلة': 'Bril niet verbonden', 'الأمر يحتاج اتصال بالنظارة': 'Verbind eerst met de bril',
   'دوّر على النظارة': 'Zoek bril', 'صوت تجريبي': 'Testgeluid', 'عرض تجريبي': 'Demo', 'هدوء': 'Stil', 'توفير': 'Eco', 'ليلي': 'Nacht',
   'الإنجازات': 'Prestaties', 'اسأل أي شيء أو أعطني أمراً': 'Vraag me iets of geef een opdracht', 'لغة الميكروفون': 'Microfoontaal', 'صوت': 'Geluid', 'مسح': 'Wissen',
+  'عادي': 'Normaal', '📍 مسار مخصص': '📍 Eigen route', 'اضغط على الخريطة لإضافة دبابيس بالترتيب. آخر دبوس هو الوجهة.': 'Tik op de kaart om pins in volgorde toe te voegen. De laatste pin is de bestemming.',
+  '↩ تراجع': '↩ Ongedaan', 'مسح الدبابيس': 'Pins wissen', '⭐ حفظ المسار': '⭐ Route bewaren', 'تم حفظ المسار': 'Route bewaard', 'دبوس': 'Pin',
+  'للكلام بعربي وهولندي مع بعض: اضغط على زر اللغة حتى يصير MIX ثم 🎤 (واضغط 🎤 مرة ثانية لإنهاء التسجيل).': 'Arabisch en Nederlands door elkaar? Tik op de taalknop tot er MIX staat en daarna op 🎤 (tik nogmaals om de opname te stoppen).',
+  'إشعارات التطبيقات (انستغرام وغيره)': 'Meldingen van apps (Instagram enz.)', 'استقبال الإشعارات على النظارة': 'Meldingen op de bril ontvangen',
+  'نسخ الرابط': 'Kopieer link', 'إشعار تجريبي': 'Testmelding', 'رابط جديد': 'Nieuwe link', 'كيف أربط انستغرام؟': 'Hoe koppel ik Instagram?',
   'وصلت إلى وجهتك 🎉': 'Je bent er! 🎉', 'وضع الهدوء': 'Stille modus',
   'وضع توفير البطارية (Eco)': 'Zuinige modus (Eco)', '🔔 دوّر على نظارتي': '🔔 Zoek mijn bril'
 };
@@ -997,7 +1026,11 @@ async function navigateTo(q) {
   } catch (e) { aiSay(tx('فشل البحث: ') + (e.message || e)); }
 }
 const NUM = /(\d{1,3})/;
+const TRANSLIT = { 'هيلديرهيد': 'helderheid', 'هلدرهيد': 'helderheid', 'ليميت': 'limiet', 'ليميتي': 'limiet', 'نافيخير': 'navigeer', 'نافيجير': 'navigeer',
+  'نافيغير': 'navigeer', 'ستور': 'stuur', 'بيريخت': 'bericht', 'بريخت': 'bericht', 'زوك': 'zoek', 'بريل': 'bril', 'ميين': 'mijn', 'ماين': 'mijn', 'مين': 'mijn' };
+function normVoice(t) { return t.split(/(\s+)/).map((w) => TRANSLIT[w] || w).join(''); }
 function localParse(t) {
+  t = normVoice(t);
   const s = t.toLowerCase().trim(); const out = []; let m;
   const num = () => { const x = NUM.exec(s); return x ? Number(x[1]) : null; };
   if ((m = /^\s*(?:navigeer|route|ga|rij|navigate|drive|take me|وجّه|وجه|خذني|روح)(?:ني)?\s*(?:naar|to|الى|إلى|على)?\s+(.+)$/i.exec(t.trim())) && !/helder|limit|bericht/.test(s)) out.push({ action: 'navigate', query: m[1] });
@@ -1019,7 +1052,8 @@ function localParse(t) {
 }
 const AI_SYSTEM = 'You are the assistant inside "Smart HUD", a companion app for navigation glasses. You can (1) chat about ANYTHING (general knowledge, advice, translation, trip ideas, math, writing) and (2) control the glasses. ' +
   'LANGUAGE RULE: the user often mixes Arabic, Dutch and English in one message. Count the words per language and ALWAYS answer in the language that has the most words in the user\'s message (the app also gives you a hint). Keep names and technical terms as they are. ' +
-  'OUTPUT: reply ONLY with compact JSON {"reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
+  'SPEECH: a message flagged as voice comes from speech recognition; Dutch/English words may be spelled phonetically in Arabic letters (e.g. هيلديرهيد = helderheid, ليميت = limiet, نافيخير = navigeer, ستور بيريخت = stuur bericht, زوك ماين بريل = zoek mijn bril) or Arabic mangled into Latin letters. Reconstruct the intended words by sound before answering; if truly unclear, ask ONE short clarifying question. If audio is attached, listen to it, put what you heard in "heard", then answer/act. ' +
+  'OUTPUT: reply ONLY with compact JSON {"heard":"(only for audio)","reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
   'Allowed actions (objects with "action"): brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
   'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
   'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}.';
@@ -1038,7 +1072,7 @@ function dominantLang(text) {
   return nl || en ? 'nl' : (ar ? 'ar' : (LANG === 'ar' ? 'ar' : 'nl'));
 }
 const LANG_NAME = { ar: 'Arabic', nl: 'Dutch', en: 'English' };
-const SPEECH_LANG = { ar: 'ar-SA', nl: 'nl-NL', en: 'en-US' };
+const SPEECH_LANG = { ar: 'ar-SA', nl: 'nl-NL', en: 'en-US', mix: 'ar-SA' };
 function speak(txt) {
   if (store('hud.tts') !== '1' || !('speechSynthesis' in window)) return;
   try {
@@ -1047,43 +1081,53 @@ function speak(txt) {
     speechSynthesis.speak(u);
   } catch (e) { /* ignore */ }
 }
-async function orFreeModels() {
-  const cache = jget('hud.orfree', null);
-  if (cache && Date.now() - cache.t < 3600000 && cache.ids && cache.ids.length) return cache.ids;
+async function orModelList() {
+  const cache = jget('hud.ormodels', null);
+  if (cache && Date.now() - cache.t < 3600000 && cache.list && cache.list.length) return cache.list;
   const res = await fetch('https://openrouter.ai/api/v1/models');
   const j = await res.json();
+  const list = (j.data || []).filter((m) => m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0 && (m.context_length || 0) >= 8000
+    && !/(embed|guard|moderation|:thinking)/i.test(m.id)).map((m) => ({ id: m.id, ctx: m.context_length || 0,
+    audio: !!(m.architecture && (m.architecture.input_modalities || []).indexOf('audio') >= 0),
+    text: !(m.architecture && m.architecture.output_modalities && m.architecture.output_modalities.indexOf('text') < 0) }));
+  jset('hud.ormodels', { t: Date.now(), list });
+  return list;
+}
+function rankModels(list) {
   const pref = ['llama', 'gemini', 'qwen', 'gpt-oss', 'mistral', 'deepseek', 'gemma'];
-  const free = (j.data || []).filter((m) => m.pricing && Number(m.pricing.prompt) === 0 && Number(m.pricing.completion) === 0 && (m.context_length || 0) >= 8000
-    && !/(vision|image|audio|embed|guard|moderation|:thinking)/i.test(m.id));
-  // "smartest first": bigger parameter count wins, known families get a small bonus, then context length
   const size = (m) => { const x = /(\d+(?:\.\d+)?)\s*b(?![a-z])/i.exec(m.id); return x ? parseFloat(x[1]) : 0; };
   const score = (m) => { const k = pref.findIndex((x) => m.id.toLowerCase().includes(x)); return size(m) + (k < 0 ? 0 : (pref.length - k) * 4); };
-  free.sort((a, b) => score(b) - score(a) || (b.context_length || 0) - (a.context_length || 0));
-  const ids = free.map((m) => m.id);
-  jset('hud.orfree', { t: Date.now(), ids });
-  return ids;
+  return list.slice().sort((a, b) => score(b) - score(a) || b.ctx - a.ctx).map((m) => m.id);
 }
+async function orFreeModels() { return rankModels((await orModelList()).filter((m) => m.text && !m.audioOnly)); }
+async function orAudioModels() { return rankModels((await orModelList()).filter((m) => m.audio && m.text)); }
 const cool = {};   // model id -> timestamp until which it is skipped (rate limit / not available)
 function coolDown(id, status) { cool[id] = Date.now() + (status === 429 ? 90000 : 1800000); }
-async function orCandidates() {
+async function orCandidates(audio) {
   const out = [];
-  const saved = store('hud.aimodel'); if (saved) out.push(saved);
-  try { (await orFreeModels()).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
-  if (!out.length) out.push('meta-llama/llama-3.3-70b-instruct:free');
+  const saved = store('hud.aimodel'); if (saved && !audio) out.push(saved);
+  try { (await (audio ? orAudioModels() : orFreeModels())).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
+  if (!out.length && !audio) out.push('meta-llama/llama-3.3-70b-instruct:free');
   const now = Date.now();
   const ready = out.filter((id) => !(cool[id] > now));
   return ready.length ? ready : out;   // if everything is cooling down, just try them all again
 }
-async function aiAsk(text) {
+async function aiAsk(text, audioB64, voice) {
   const key = store('hud.aikey');
-  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 25000);
+  const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 40000);
   try {
-    const sys = AI_SYSTEM + ' Language hint for this message: mostly ' + LANG_NAME[dominantLang(text)] + '. Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
-    const msgs = aiHist.concat([{ role: 'user', content: text }]);
+    const hint = audioB64 ? 'Detect the dominant language of the audio yourself and answer in it.' : 'Language hint for this message: mostly ' + LANG_NAME[dominantLang(text)] + '.';
+    const sys = AI_SYSTEM + ' ' + hint + ' Current glasses settings: ' + JSON.stringify(ble.cfg) + '. Connected: ' + ble.connected + '.';
+    const userContent = audioB64
+      ? [{ type: 'text', text: '(voice message, mixed languages possible: first write what you heard in "heard", then answer or act)' }, { type: 'input_audio', input_audio: { data: audioB64, format: 'wav' } }]
+      : (voice ? '[voice] ' : '') + text;
+    const msgs = aiHist.concat([{ role: 'user', content: userContent }]);
     const orKey = key.indexOf('sk-or-') === 0;
+    if (audioB64 && !orKey) throw new Error('audio needs an OpenRouter key');
     let res, j, raw;
     if (orKey) {
-      const cands = await orCandidates();
+      const cands = await orCandidates(!!audioB64);
+      if (!cands.length) throw new Error('no free audio model available right now');
       let lastErr = null; raw = null;
       for (const mid of cands) {
         try {
@@ -1096,7 +1140,7 @@ async function aiAsk(text) {
           if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
           const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
           if (!c) { lastErr = new Error('empty answer'); continue; }
-          raw = c; store('hud.aimodel', mid); break;
+          raw = c; if (!audioB64) store('hud.aimodel', mid); break;
         } catch (e) { lastErr = e; if (e && e.name === 'AbortError') break; }
       }
       if (raw == null) throw new Error((lastErr && lastErr.message ? lastErr.message : 'no model') + ' | https://openrouter.ai/settings/privacy');
@@ -1113,10 +1157,45 @@ async function aiAsk(text) {
     let obj;
     try { const m = /\{[\s\S]*\}/.exec(raw); obj = JSON.parse(m ? m[0] : '{}'); if (typeof obj.reply !== 'string' && !Array.isArray(obj.actions)) throw new Error('shape'); }
     catch (e) { obj = { reply: String(raw).replace(/```[a-z]*/g, '').trim(), actions: [] }; }
-    aiHist.push({ role: 'user', content: text }, { role: 'assistant', content: JSON.stringify(obj) });
+    const histUser = audioB64 ? '[voice] ' + (obj.heard || '') : (voice ? '[voice] ' : '') + text;
+    aiHist.push({ role: 'user', content: histUser }, { role: 'assistant', content: JSON.stringify({ reply: obj.reply, actions: obj.actions }) });
     while (aiHist.length > 12) aiHist.shift();
     return obj;
   } finally { clearTimeout(to); }
+}
+
+/* ---- voice recording for audio-capable models ---- */
+let recStop = null;
+async function recordClip(maxMs) {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const rec = new MediaRecorder(stream); const chunks = [];
+  rec.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+  const done = new Promise((res) => { rec.onstop = res; });
+  rec.start();
+  recStop = () => { if (rec.state !== 'inactive') rec.stop(); };
+  const t = setTimeout(recStop, maxMs);
+  await done; clearTimeout(t); recStop = null;
+  stream.getTracks().forEach((tr) => tr.stop());
+  return new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+}
+function wavFromFloat32(f, rate) {
+  const dv = new DataView(new ArrayBuffer(44 + f.length * 2));
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) dv.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); dv.setUint32(4, 36 + f.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); dv.setUint32(16, 16, true);
+  dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, rate, true); dv.setUint32(28, rate * 2, true);
+  dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); w(36, 'data'); dv.setUint32(40, f.length * 2, true);
+  for (let i = 0; i < f.length; i++) { const v = Math.max(-1, Math.min(1, f[i])); dv.setInt16(44 + i * 2, v < 0 ? v * 0x8000 : v * 0x7fff, true); }
+  return new Uint8Array(dv.buffer);
+}
+function bytesToB64(u8) { let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(bin); }
+async function blobToWavB64(blob) {
+  const buf = await blob.arrayBuffer();
+  const AC = window.AudioContext || window.webkitAudioContext; const ctx = new AC();
+  const audio = await ctx.decodeAudioData(buf); try { ctx.close(); } catch (e) { /* ignore */ }
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(audio.duration * 16000)), 16000);
+  const src = off.createBufferSource(); src.buffer = audio; src.connect(off.destination); src.start();
+  const out = await off.startRendering();
+  return bytesToB64(wavFromFloat32(out.getChannelData(0), 16000));
 }
 const T2 = (nl, ar, en) => { const d = dominantLang(aiLastUser); return d === 'ar' ? ar : d === 'en' ? (en || nl) : nl; };
 let aiLastUser = '';
@@ -1124,14 +1203,15 @@ function aiTyping() {
   const box = $('#aiLog'); const d = document.createElement('div'); d.className = 'ai-msg typing';
   d.innerHTML = '<i></i><i></i><i></i>'; box.appendChild(d); box.scrollTop = box.scrollHeight; return d;
 }
-async function aiRun(text) {
-  text = text.trim(); if (!text) return;
+async function aiRun(text, opts) {
+  opts = opts || {};
+  text = (text || '').trim(); if (!text && !opts.audio) return;
   aiLastUser = text;
-  aiSay(text, true);
+  if (text) aiSay(text, true);
   let obj;
   if (store('hud.aikey')) {
     const ty = aiTyping();
-    try { obj = await aiAsk(text); ty.remove(); }
+    try { obj = await aiAsk(text, opts.audio, opts.voice); ty.remove(); if (opts.audio && obj.heard) { aiLastUser = obj.heard; aiSay(String(obj.heard), true); } }
     catch (e) { ty.remove(); aiSay('AI: ' + (e && e.message ? e.message : e)); dlog('ai error: ' + (e && e.message)); obj = { actions: localParse(text) }; }
   } else obj = { actions: localParse(text) };
   const acts = Array.isArray(obj.actions) ? obj.actions : [];
@@ -1151,6 +1231,75 @@ function renderAiChips() {
     ? ['كم باقي لين أوصل؟', 'ترجم: ik ben er bijna', 'أعطني فكرة رحلة بالدراجة', 'سطوع 50', 'دوّر على نظارتي']
     : ['Hoe laat is het in Dubai?', 'Vertaal naar Arabisch: ik ben er bijna', 'Geef me een fietsroute-idee', 'helderheid 50', 'zoek mijn bril'];
   items.forEach((t) => { const b = document.createElement('button'); b.textContent = t; b.addEventListener('click', () => aiRun(t)); box.appendChild(b); });
+}
+
+/* ============================== phone notifications -> glasses (via ntfy.sh) ============================== */
+let ntfyES = null, ntfyOk = false, lastFwd = 0;
+const seenNtfy = new Set(); const pendingN = [];
+function randomId(n) { const a = new Uint8Array(n); crypto.getRandomValues(a); return Array.from(a, (b) => 'abcdefghjkmnpqrstuvwxyz23456789'[b % 31]).join(''); }
+function ntfyTopic() { let t = store('hud.ntfy'); if (!t) { t = 'hud-' + randomId(18); store('hud.ntfy', t); } return t; }
+function ntfyUrl() { return 'https://ntfy.sh/' + ntfyTopic(); }
+function ntfyStop() { if (ntfyES) { ntfyES.close(); ntfyES = null; } ntfyOk = false; }
+function ntfyStart() {
+  ntfyStop();
+  try {
+    ntfyES = new EventSource(ntfyUrl() + '/sse?since=' + Math.floor(Date.now() / 1000));
+    ntfyES.onopen = () => { ntfyOk = true; schedule(); };
+    ntfyES.onerror = () => { ntfyOk = false; schedule(); };
+    ntfyES.onmessage = (ev) => {
+      try { const m = JSON.parse(ev.data); if (m.event && m.event !== 'message') return; if (m.id && seenNtfy.has(m.id)) return; if (m.id) seenNtfy.add(m.id); forwardNotif(m); } catch (e) { /* ignore */ }
+    };
+  } catch (e) { dlog('ntfy: ' + e); }
+}
+const APP_LABEL = { instagram: 'IG', whatsapp: 'WA', telegram: 'TG', messenger: 'FB', facebook: 'FB', sms: 'SMS', snapchat: 'SC', signal: 'SG', gmail: 'Mail', mail: 'Mail', tiktok: 'TT' };
+function forwardNotif(m) {
+  let text = String(m.message || '').trim(); let app = String(m.title || '').trim();
+  const k = text.indexOf('|');
+  if (k > 0 && k <= 16) { app = text.slice(0, k).trim(); text = text.slice(k + 1).trim(); }
+  if (!text && !app) return;
+  const low = app.toLowerCase();
+  const type = /(call|phone|bel|dialer|مكالمة)/.test(low) ? 1 : /(warn|alarm|alert)/.test(low) ? 4 : 2;
+  const label = APP_LABEL[low.replace(/[^a-z]/g, '')] || app.slice(0, 6);
+  const out = (label ? label + ': ' : '') + text;
+  pendingN.push({ type, text: out.slice(0, 90) });
+  if (pendingN.length > 6) pendingN.shift();
+  dlog('notif: ' + out.slice(0, 60));
+  flushPending();
+}
+function flushPending() {
+  if (!ble.connected || !pendingN.length) return;
+  const now = Date.now(); if (now - lastFwd < 2500) return;
+  lastFwd = now; const n = pendingN.shift();
+  sendNotifAuto(n.type, n.text);
+}
+setInterval(flushPending, 1500);
+function ntfySteps() {
+  const u = ntfyUrl();
+  return LANG === 'ar' ? [
+    'ثبّت تطبيق MacroDroid من متجر Play (النسخة المجانية تكفي).',
+    'ماكرو جديد ← المشغّل (Trigger): الإشعارات ← استلام إشعار ← اختر Instagram (وتطبيقات ثانية إذا بدك).',
+    'الإجراء (Action): الاتصال ← HTTP Request ← الطريقة POST، الرابط: ' + u,
+    'في خانة المحتوى (Body) اكتب Instagram| ثم اضغط زر {…} وأدخل عنوان الإشعار ونصه (Notification Title / Text). مثال: Instagram|{title}: {text}',
+    'اسمح لـ MacroDroid بالوصول للإشعارات وأوقف توفير البطارية عنه.',
+    'اضغط "إشعار تجريبي" هون. لازم هذا التطبيق يكون مفتوحاً ومتصلاً بالنظارة.',
+    'ملاحظة: النص يمرّ عبر خادم ntfy.sh المجاني. الرابط سرّي، لا تشاركه.'
+  ] : [
+    'Installeer MacroDroid uit de Play Store (gratis versie is genoeg).',
+    'Nieuwe macro > Trigger: Meldingen > Melding ontvangen > kies Instagram (en eventueel andere apps).',
+    'Actie: Connectiviteit > HTTP-verzoek > methode POST, URL: ' + u,
+    'Bij Body typ je Instagram| en tik daarna op de knop {…} om de titel en tekst van de melding in te voegen (Notification Title / Text). Bijvoorbeeld: Instagram|{title}: {text}',
+    'Geef MacroDroid toegang tot meldingen en zet batterijbesparing voor MacroDroid uit.',
+    'Tik hier op "Testmelding". Deze app moet open staan en met de bril verbonden zijn.',
+    'Let op: de tekst gaat via de gratis server ntfy.sh. De link is geheim, deel hem niet.'
+  ];
+}
+function renderNtfy() {
+  const on = store('hud.ntfyon') === '1';
+  $('#ntfySw').checked = on;
+  $('#ntfyUrl').textContent = ntfyUrl();
+  $('#ntfyStat').textContent = !on ? (LANG === 'ar' ? 'مطفي' : 'Uit') : ntfyOk ? (LANG === 'ar' ? 'متصل بالخدمة ✓' : 'Verbonden met de dienst ✓') : (LANG === 'ar' ? 'جاري الاتصال…' : 'Verbinden…');
+  const ol = $('#ntfySteps'); const k = LANG + ntfyTopic();
+  if (ol.dataset.k !== k) { ol.dataset.k = k; ol.textContent = ''; ntfySteps().forEach((t) => { const li = document.createElement('li'); li.textContent = t; ol.appendChild(li); }); }
 }
 
 /* ============================== hero, tiles, badges ============================== */
@@ -1438,11 +1587,13 @@ async function fetchJson(url, ms) {
   } finally { clearTimeout(t); }
 }
 
-async function fetchRoute(from, to, prof) {
+async function fetchRoute(from, to, prof, vias) {
+  vias = vias || [];
   const base = prof === 0 ? 'https://router.project-osrm.org/route/v1/driving'
     : prof === 1 ? 'https://routing.openstreetmap.de/routed-bike/route/v1/driving'
     : 'https://routing.openstreetmap.de/routed-foot/route/v1/driving';
-  const url = `${base}/${from[1]},${from[0]};${to[1]},${to[0]}?overview=full&geometries=geojson&steps=true`;
+  const coords = [from].concat(vias, [to]).map((c) => c[1] + ',' + c[0]).join(';');
+  const url = `${base}/${coords}?overview=full&geometries=geojson&steps=true`;
   const j = await fetchJson(url, 20000);
   if (j.code !== 'Ok' || !j.routes || !j.routes.length) throw new Error(tx('لا يوجد مسار'));
   const r = j.routes[0];
@@ -1452,22 +1603,29 @@ async function fetchRoute(from, to, prof) {
   for (let i = 1; i < pts.length; i++) cum[i] = cum[i - 1] + haversine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1]);
   const steps = [];
   let prev = 0;
-  for (const leg of r.legs) {
+  const wp = [];
+  r.legs.forEach((leg, li) => {
     for (const s of leg.steps) {
       const m = s.maneuver;
       const near = nearestOnPath(pts, m.location[1], m.location[0], prev, pts.length);
       prev = near.idx;
-      const [man, extra] = mapManeuver(m.type || '', m.modifier || '', m.exit || 0);
-      steps.push({ man, extra, name: s.name || '', vIdx: near.idx });
+      let [man, extra] = mapManeuver(m.type || '', m.modifier || '', m.exit || 0);
+      let name = s.name || '';
+      if (m.type === 'arrive' && li < r.legs.length - 1) {          // a pin in the middle of a custom route
+        man = 1; extra = 0; name = tx('دبوس') + ' ' + (li + 1);
+        wp.push({ vIdx: near.idx, p: vias[li] });
+      }
+      steps.push({ man, extra, name, vIdx: near.idx });
     }
-  }
+  });
   if (steps.length < 2) steps.push({ man: 12, extra: 0, name: '', vIdx: pts.length - 1 });
   steps[steps.length - 1].vIdx = pts.length - 1;
-  return { pts, cum, steps, totalM: cum[cum.length - 1], totalS: r.duration };
+  return { pts, cum, steps, wp, totalM: cum[cum.length - 1], totalS: r.duration };
 }
 
 /* ============================== navigation engine ============================== */
 const nav = {
+  custom: false, pins: [],
   dest: null, destName: '', route: null, profile: 1,
   tracking: false, navigating: false, simulating: false, rerouting: false, arrived: false,
   pos: null, speedMps: 0, curIdx: 0, nextStep: 1, offCount: 0, status: '',
@@ -1538,7 +1696,8 @@ async function reroute(from) {
   sendNav(13, 0, 0xFFFF, 0, '');
   schedule();
   try {
-    nav.route = await fetchRoute(from, nav.dest, nav.profile);
+    const left = (nav.custom && nav.route && nav.route.wp) ? nav.route.wp.filter((w) => w.vIdx > nav.curIdx).map((w) => w.p) : [];
+    nav.route = await fetchRoute(from, nav.dest, nav.profile, left);
     nav.curIdx = 0; nav.nextStep = 1; nav.offCount = 0;
     if (nav.simulating) nav.simDist = 0;
     nav.status = tx('الملاحة شغّالة');
@@ -1624,7 +1783,7 @@ async function buildRoute(simulate) {
       const p = await getCurrentPos();
       nav.pos = [p.coords.latitude, p.coords.longitude];
     }
-    nav.route = await fetchRoute(nav.pos, nav.dest, nav.profile);
+    nav.route = await fetchRoute(nav.pos, nav.dest, nav.profile, nav.custom ? nav.pins.slice(0, -1).map((x) => x.p) : []);
   } catch (e) {
     nav.status = tx('تعذر حساب المسار: ') + (e.message || e);
     schedule();
@@ -1677,7 +1836,50 @@ async function searchPlaces(q) {
   return list.map(e => ({ name: e.display_name, pos: [parseFloat(e.lat), parseFloat(e.lon)] }));
 }
 
+let routesSaved = jget('hud.routes', []);
+let pinLayer = null;
+function setCustom(on) {
+  nav.custom = on;
+  if (on) { if (nav.dest && !nav.pins.length) nav.pins = [{ p: nav.dest, n: nav.destName }]; }
+  else { nav.pins = []; }
+  syncPinDest(); drawPins(); schedule();
+}
+function syncPinDest() {
+  if (!nav.custom) return;
+  const last = nav.pins[nav.pins.length - 1];
+  if (last) { nav.dest = last.p; nav.destName = last.n; } else { nav.dest = null; nav.destName = ''; }
+}
+function addPin(pos, name) {
+  if (nav.navigating) return;
+  if (nav.pins.length >= 20) { toast('max 20'); return; }
+  nav.pins.push({ p: pos, n: name || (tx('دبوس') + ' ' + (nav.pins.length + 1)) });
+  syncPinDest(); drawPins(); schedule();
+}
+function drawPins() {
+  if (!map) return;
+  if (nav.custom && destMarker) { map.removeLayer(destMarker); destMarker = null; }
+  if (pinLayer) { map.removeLayer(pinLayer); pinLayer = null; }
+  if (!nav.custom || !nav.pins.length) return;
+  const items = nav.pins.map((x, i) => L.marker(x.p, { icon: L.divIcon({ className: '', html: '<div class="pinbadge' + (i === nav.pins.length - 1 ? ' last' : '') + '">' + (i + 1) + '</div>', iconSize: [26, 26], iconAnchor: [13, 13] }) }));
+  if (nav.pins.length > 1 && !nav.route) items.push(L.polyline(nav.pins.map((x) => x.p), { color: '#22d3ee', weight: 3, dashArray: '6 8', opacity: .8 }));
+  pinLayer = L.layerGroup(items).addTo(map);
+}
+function renderPins() {
+  const seg = $('#modeSeg'); setSeg('#modeSeg', nav.custom ? 1 : 0);
+  $$('#modeSeg button').forEach((b) => { b.disabled = nav.navigating; });
+  const box = $('#customBox'); box.hidden = !nav.custom; box.classList.toggle('on', nav.custom);
+  chipRow($('#pinChips'), nav.pins.map((x, i) => ({ n: (i + 1) + '. ' + x.n, p: x.p })), (it) => { if (map) map.setView(it.p, 15); }, nav.navigating ? null : (i) => { nav.pins.splice(i, 1); syncPinDest(); drawPins(); schedule(); }, '📍 ');
+  chipRow($('#routeChips'), routesSaved.map((r) => ({ n: r.n, r })), (it) => { if (nav.navigating) return; nav.custom = true; nav.pins = it.r.pins.map((x) => ({ p: x.p.slice(), n: x.n })); syncPinDest(); nav.route = null; initMap(); drawRoute(); drawPins(); if (map && nav.pins.length) map.fitBounds(nav.pins.map((x) => x.p), { padding: [30, 30] }); schedule(); },
+    (i) => { routesSaved.splice(i, 1); jset('hud.routes', routesSaved); schedule(); }, '🗺 ');
+  void seg;
+}
+function saveRoute() {
+  if (nav.pins.length < 2) { toast(tx('اختر وجهة أولاً')); return; }
+  routesSaved.unshift({ n: 'Route ' + (routesSaved.length + 1) + ' · ' + nav.pins.length + ' pins', pins: nav.pins.map((x) => ({ p: x.p, n: x.n })) });
+  routesSaved = routesSaved.slice(0, 8); jset('hud.routes', routesSaved); toast(tx('تم حفظ المسار')); schedule();
+}
 function setDestination(pos, name) {
+  if (nav.custom) { addPin(pos, name && name !== tx('نقطة على الخريطة') ? name : null); return; }
   nav.dest = pos; nav.destName = name;
   mapUpdate();
   schedule();
@@ -1706,10 +1908,11 @@ function initMap() {
   map = L.map('map', { zoomControl: true, attributionControl: true }).setView(c, z);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
   map.on('moveend', () => store('hud.view', JSON.stringify({ c: [map.getCenter().lat, map.getCenter().lng], z: map.getZoom() })));
-  map.on('click', (e) => { if (pickMode) { setPick(false); setDestination([e.latlng.lat, e.latlng.lng], tx('نقطة على الخريطة')); } });
-  map.on('contextmenu', (e) => setDestination([e.latlng.lat, e.latlng.lng], tx('نقطة على الخريطة')));
+  map.on('click', (e) => { if (nav.custom) { addPin([e.latlng.lat, e.latlng.lng], null); return; } if (pickMode) { setPick(false); setDestination([e.latlng.lat, e.latlng.lng], tx('نقطة على الخريطة')); } });
+  map.on('contextmenu', (e) => { if (!nav.custom) setDestination([e.latlng.lat, e.latlng.lng], tx('نقطة على الخريطة')); });
   mapUpdate();
   drawRoute();
+  drawPins();
 }
 
 function mapUpdate() {
@@ -1728,6 +1931,7 @@ function mapUpdate() {
 
 function drawRoute() {
   if (!map) return;
+  setTimeout(drawPins, 0);
   if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
   if (nav.route) {
     routeLine = L.polyline(nav.route.pts, { color: '#22d3ee', weight: 6, opacity: .9 }).addTo(map);
@@ -1848,7 +2052,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.3 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.4 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -1885,6 +2089,8 @@ function render() {
 
   renderRide();
   renderFavs();
+  renderPins();
+  renderNtfy();
   renderHero();
   renderAiChips();
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
@@ -1942,21 +2148,45 @@ function bind() {
   });
   $('#btnPick').addEventListener('click', () => setPick(!pickMode));
   $('#btnFav').addEventListener('click', saveFav);
+  $('#modeSeg').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b || b.disabled) return; setCustom(b.dataset.v === '1'); });
+  $('#pinUndo').addEventListener('click', () => { if (nav.navigating) return; nav.pins.pop(); syncPinDest(); drawPins(); schedule(); });
+  $('#pinClear').addEventListener('click', () => { if (nav.navigating) return; nav.pins = []; syncPinDest(); nav.route = null; drawRoute(); drawPins(); schedule(); });
+  $('#routeSave').addEventListener('click', saveRoute);
+  $('#ntfySw').addEventListener('change', (e) => { store('hud.ntfyon', e.target.checked ? '1' : '0'); if (e.target.checked) ntfyStart(); else ntfyStop(); schedule(); });
+  $('#ntfyCopy').addEventListener('click', async () => { try { await navigator.clipboard.writeText(ntfyUrl()); toast(tx('تم النسخ')); } catch (e) { toast(ntfyUrl()); } });
+  $('#ntfyNew').addEventListener('click', () => { store('hud.ntfy', randomId(18)); seenNtfy.clear(); if (store('hud.ntfyon') === '1') ntfyStart(); schedule(); });
+  $('#ntfyTest').addEventListener('click', async () => {
+    try { const r = await fetch(ntfyUrl(), { method: 'POST', body: 'Test|Hallo van Smart HUD' }); toast(r.ok ? 'OK' : 'HTTP ' + r.status); } catch (e) { toast(String(e && e.message || e)); }
+  });
   const aiSend = () => { const i = $('#aiIn'); const v = i.value; i.value = ''; aiRun(v); };
   $('#aiGo').addEventListener('click', aiSend);
   $('#aiIn').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); aiSend(); } });
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (SR) {
     const mic = $('#aiMic'), ml = $('#aiMicLang'); mic.hidden = false; ml.hidden = false;
-    const order = ['nl', 'ar', 'en'];
+    const order = ['nl', 'ar', 'en', 'mix'];
     const micLang = () => store('hud.miclang') || (LANG === 'ar' ? 'ar' : 'nl');
     const showML = () => { ml.textContent = micLang().toUpperCase(); };
     showML();
-    ml.addEventListener('click', () => { store('hud.miclang', order[(order.indexOf(micLang()) + 1) % 3]); showML(); });
-    mic.addEventListener('click', () => {
+    ml.addEventListener('click', () => { store('hud.miclang', order[(order.indexOf(micLang()) + 1) % order.length]); showML(); });
+    mic.addEventListener('click', async () => {
+      if (recStop) { recStop(); return; }
+      const key = store('hud.aikey') || '';
+      if (micLang() === 'mix' && key.indexOf('sk-or-') === 0 && navigator.mediaDevices && window.MediaRecorder) {
+        try {
+          const cands = await orAudioModels();
+          if (cands.length) {
+            mic.textContent = '⏺'; toast(tx('جاري الاستماع…'));
+            const blob = await recordClip(9000); mic.textContent = '🎤';
+            const b64 = await blobToWavB64(blob);
+            aiRun('', { audio: b64, voice: true }); return;
+          }
+          dlog('no free audio model; using browser speech recognition');
+        } catch (e) { mic.textContent = '🎤'; dlog('audio mode failed: ' + (e && e.message)); toast(String(e && e.message || e)); }
+      }
       try {
-        const r = new SR(); r.lang = SPEECH_LANG[micLang()]; r.interimResults = false; r.maxAlternatives = 1;
-        r.onresult = (ev) => { $('#aiIn').value = ev.results[0][0].transcript; aiSend(); };
+        const r = new SR(); r.lang = SPEECH_LANG[micLang()] || 'ar-SA'; r.interimResults = false; r.maxAlternatives = 1;
+        r.onresult = (ev) => { $('#aiIn').value = ''; aiRun(ev.results[0][0].transcript, { voice: true }); };
         r.onerror = () => { mic.textContent = '🎤'; }; r.onend = () => { mic.textContent = '🎤'; };
         mic.textContent = '…'; r.start();
       } catch (e) { toast(String(e)); }
@@ -2059,6 +2289,7 @@ function boot() {
   if (sr && sr.a) {
     Object.assign(ride, { active: true, paused: true, t0: sr.t0, accMs: sr.acc, movMs: sr.mov, dist: sr.d, max: sr.m, climb: sr.c });
   }
+  if (store('hud.ntfyon') === '1') ntfyStart();
   setInterval(() => { if (ride.active && !ride.paused && !document.hidden) schedule(); }, 1000);
   showTab('home');
   render();
