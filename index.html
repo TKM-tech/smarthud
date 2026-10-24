@@ -1101,6 +1101,12 @@ function rankModels(list) {
 }
 async function orFreeModels() { return rankModels((await orModelList()).filter((m) => m.text && !m.audioOnly)); }
 async function orAudioModels() { return rankModels((await orModelList()).filter((m) => m.audio && m.text)); }
+let orBlocked = jget('hud.orblock', []);
+function blockModel(id, msg) {
+  if (/(agentic|harness|only available|not available|not supported|does not support|no endpoints)/i.test(msg || '') && orBlocked.indexOf(id) < 0) {
+    orBlocked.push(id); orBlocked = orBlocked.slice(-40); jset('hud.orblock', orBlocked);
+  }
+}
 const cool = {};   // model id -> timestamp until which it is skipped (rate limit / not available)
 function coolDown(id, status) { cool[id] = Date.now() + (status === 429 ? 90000 : 1800000); }
 async function orCandidates(audio) {
@@ -1109,8 +1115,9 @@ async function orCandidates(audio) {
   try { (await (audio ? orAudioModels() : orFreeModels())).slice(0, 12).forEach((id) => { if (out.indexOf(id) < 0) out.push(id); }); } catch (e) { dlog('models list failed: ' + (e && e.message)); }
   if (!out.length && !audio) out.push('meta-llama/llama-3.3-70b-instruct:free');
   const now = Date.now();
-  const ready = out.filter((id) => !(cool[id] > now));
-  return ready.length ? ready : out;   // if everything is cooling down, just try them all again
+  const ready = out.filter((id) => !(cool[id] > now) && orBlocked.indexOf(id) < 0);
+  if (!ready.length && audio) return [];
+  return ready.length ? ready : out.filter((id) => orBlocked.indexOf(id) < 0);   // if everything is cooling down, try them all again
 }
 async function aiAsk(text, audioB64, voice) {
   const key = store('hud.aikey');
@@ -1137,7 +1144,7 @@ async function aiAsk(text, audioB64, voice) {
             body: JSON.stringify({ model: mid, max_tokens: 700, temperature: 0.2, messages: [{ role: 'system', content: sys }].concat(msgs) })
           });
           j = await res.json();
-          if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
+          if (!res.ok || j.error) { coolDown(mid, res.status || (j.error && j.error.code)); lastErr = new Error((j.error && (j.error.message || JSON.stringify(j.error))) || ('HTTP ' + res.status)); blockModel(mid, lastErr.message); dlog('openrouter ' + mid + ': ' + lastErr.message); if (res.status === 401) break; continue; }
           const c = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
           if (!c) { lastErr = new Error('empty answer'); continue; }
           raw = c; if (!audioB64) store('hud.aimodel', mid); break;
@@ -1212,7 +1219,17 @@ async function aiRun(text, opts) {
   if (store('hud.aikey')) {
     const ty = aiTyping();
     try { obj = await aiAsk(text, opts.audio, opts.voice); ty.remove(); if (opts.audio && obj.heard) { aiLastUser = obj.heard; aiSay(String(obj.heard), true); } }
-    catch (e) { ty.remove(); aiSay('AI: ' + (e && e.message ? e.message : e)); dlog('ai error: ' + (e && e.message)); obj = { actions: localParse(text) }; }
+    catch (e) {
+      ty.remove(); dlog('ai error: ' + (e && e.message));
+      if (opts.audio) {
+        store('hud.audiooff', String(Date.now() + 3600000));
+        aiSay(T2('Geen werkend gratis audiomodel op dit moment. Tik nogmaals op 🎤: ik gebruik nu de gewone spraakherkenning (kies AR als je vooral Arabisch praat).',
+          'ما في نموذج صوتي مجاني شغّال هلأ. اضغط 🎤 مرة ثانية: رح استعمل التعرّف العادي على الصوت (اختر AR إذا بتحكي أغلبه عربي).',
+          'No working free audio model right now. Tap 🎤 again: I will use normal speech recognition (pick AR if you mostly speak Arabic).'));
+        return;
+      }
+      aiSay('AI: ' + (e && e.message ? e.message : e)); obj = { actions: localParse(text) };
+    }
   } else obj = { actions: localParse(text) };
   const acts = Array.isArray(obj.actions) ? obj.actions : [];
   const needsBle = acts.some((a) => a.action !== 'navigate' && a.action !== 'ride_start' && a.action !== 'ride_stop' && a.action !== 'nav_stop');
@@ -2052,7 +2069,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD Web 1.4 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD Web 1.4.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -2172,9 +2189,9 @@ function bind() {
     mic.addEventListener('click', async () => {
       if (recStop) { recStop(); return; }
       const key = store('hud.aikey') || '';
-      if (micLang() === 'mix' && key.indexOf('sk-or-') === 0 && navigator.mediaDevices && window.MediaRecorder) {
+      if (micLang() === 'mix' && key.indexOf('sk-or-') === 0 && navigator.mediaDevices && window.MediaRecorder && Date.now() > Number(store('hud.audiooff') || 0)) {
         try {
-          const cands = await orAudioModels();
+          const cands = (await orAudioModels()).filter((id) => orBlocked.indexOf(id) < 0);
           if (cands.length) {
             mic.textContent = '⏺'; toast(tx('جاري الاستماع…'));
             const blob = await recordClip(9000); mic.textContent = '🎤';
