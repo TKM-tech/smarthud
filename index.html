@@ -573,7 +573,8 @@ input[type=search], input[type=time], input.txt { width: 100%; padding: 10px 12p
       <div class="sw"><label for="swRead"><b>قراءة الإشعارات بصوت عالي</b><span class="muted small">مفيد مع السماعات</span></label><input type="checkbox" id="swRead"></div>
       <div class="field"><b>أشخاص مهمين (VIP)</b><input type="text" class="txt" id="vipIn" dir="auto" placeholder="mama, papa, ..." autocomplete="off"><span class="muted small">إشعاراتهم بتوصل دايماً حتى بساعات الهدوء</span></div>
       <div class="field"><b>كلمات محظورة</b><input type="text" class="txt" id="blockIn" dir="auto" placeholder="promo, korting, ..." autocomplete="off"><span class="muted small">أي إشعار فيه هالكلمات ما بينبعت</span></div>
-      <div class="btns"><button class="btn" id="btnBatt">استثناء من توفير البطارية</button><button class="btn" id="btnNativeTest">إشعار تجريبي</button></div>
+      <div class="btns"><button class="btn" id="btnDiag">فحص المشاكل</button><button class="btn" id="btnBatt">استثناء من توفير البطارية</button><button class="btn" id="btnNativeTest">إشعار تجريبي</button></div>
+      <pre id="diagBox" class="small" style="white-space:pre-wrap;direction:ltr;text-align:left;margin:0" hidden></pre>
       <div class="muted small">التطبيق بيقرأ بس إشعارات التطبيقات اللي بتختارها. الباقي بيتجاهله من الأساس.</div>
     </div>
     <div class="card">
@@ -855,7 +856,7 @@ Object.assign(NLD, {
   'أشخاص مهمين (VIP)': 'Belangrijke personen (VIP)', 'إشعاراتهم بتوصل دايماً حتى بساعات الهدوء': 'Hun meldingen komen altijd door, ook tijdens stille uren',
   'كلمات محظورة': 'Geblokkeerde woorden', 'أي إشعار فيه هالكلمات ما بينبعت': 'Meldingen met deze woorden worden niet doorgestuurd',
   'تفعيل إشعارات الهاتف': 'Telefoonmeldingen inschakelen', 'التطبيق بيقرأ بس إشعارات التطبيقات اللي بتختارها. الباقي بيتجاهله من الأساس.': 'De app leest alleen meldingen van de apps die jij kiest. De rest wordt direct genegeerd.',
-  'آخر الإشعارات': 'Laatste meldingen', 'ابحث عن تطبيق…': 'Zoek een app…', 'التطبيقات الشائعة': 'Populaire apps', 'إلغاء الكل': 'Alles wissen', 'إغلاق': 'Sluiten',
+  'فحص المشاكل': 'Problemen controleren', 'آخر الإشعارات': 'Laatste meldingen', 'ابحث عن تطبيق…': 'Zoek een app…', 'التطبيقات الشائعة': 'Populaire apps', 'إلغاء الكل': 'Alles wissen', 'إغلاق': 'Sluiten',
 });
 function tx(s) {
   if (LANG === 'ar' || typeof s !== 'string') return s;
@@ -1687,13 +1688,17 @@ let appList = null;
 function loadApps() {
   if (appList) return appList;
   let l = []; try { l = JSON.parse(window.AndroidApp.listApps() || '[]'); } catch (e) { l = []; }
+  let sn = []; try { sn = JSON.parse(window.AndroidApp.seenApps() || '[]'); } catch (e) { sn = []; }
   const have = {}; l.forEach((a) => { have[a.pkg] = 1; });
+  sn.forEach((a) => { if (!have[a.pkg]) { have[a.pkg] = 1; l.push({ pkg: a.pkg, label: a.label }); } });
   Object.keys(seenPk).forEach((p) => { if (!have[p]) l.push({ pkg: p, label: seenPk[p] }); });
-  l.sort((a, b) => a.label.toLowerCase() < b.label.toLowerCase() ? -1 : 1);
-  return (appList = l);
+  l.sort((a, b) => String(a.label).toLowerCase() < String(b.label).toLowerCase() ? -1 : 1);
+  if (l.length) appList = l;          // do not cache an empty result
+  return l;
 }
 function renderPicker() {
   const box = $('#apList'); const q = ($('#apQ').value || '').toLowerCase(); box.textContent = '';
+  if (!loadApps().length) { const e = document.createElement('div'); e.className = 'muted small'; e.style.padding = '14px 2px'; e.textContent = LANG === 'ar' ? 'القائمة فاضية. تأكد إنك ثبّت آخر نسخة APK (1.7.0) وسكّر التطبيق وافتحه من جديد.' : 'De lijst is leeg. Controleer of je de nieuwste APK (1.7.0) hebt geïnstalleerd en start de app opnieuw.'; box.appendChild(e); return; }
   loadApps().filter((a) => !q || a.label.toLowerCase().indexOf(q) >= 0 || a.pkg.indexOf(q) >= 0).forEach((a) => {
     const r = document.createElement('label'); r.className = 'ap-item';
     const c = document.createElement('input'); c.type = 'checkbox'; c.checked = allowApps.indexOf(a.pkg) >= 0;
@@ -1745,7 +1750,7 @@ function bindApk() {
   tgl('#swQuiet', 'hud.qh'); tgl('#swRideOnly', 'hud.rideonly'); tgl('#swRead', 'hud.readaloud');
   const txt = (id, k) => $(id).addEventListener('change', (e) => { store(k, e.target.value); schedule(); });
   txt('#qh1', 'hud.qh1'); txt('#qh2', 'hud.qh2'); txt('#vipIn', 'hud.vip'); txt('#blockIn', 'hud.block');
-  const open = (on) => { $('#appPicker').hidden = !on; if (on) { $('#apQ').value = ''; renderPicker(); } };
+  const open = (on) => { $('#appPicker').hidden = !on; if (on) { appList = null; $('#apQ').value = ''; renderPicker(); } };
   $('#btnPickApps').addEventListener('click', () => open(true));
   $('#apClose').addEventListener('click', () => open(false)); $('#apDone').addEventListener('click', () => open(false));
   $('#apQ').addEventListener('input', renderPicker);
@@ -1754,6 +1759,19 @@ function bindApk() {
     const have = {}; loadApps().forEach((a) => { have[a.pkg] = 1; });
     POPULAR_PK.forEach((p) => { if (have[p] && allowApps.indexOf(p) < 0) allowApps.push(p); });
     jset('hud.allow', allowApps); pushAllow(); renderPicker(); schedule();
+  });
+  $('#btnDiag').addEventListener('click', () => {
+    let d = {}; try { d = JSON.parse(window.AndroidApp.diag()); } catch (e) { d = { error: String(e) }; }
+    const L = [];
+    L.push('Android API: ' + d.sdk); L.push('Notification access: ' + (d.access ? 'YES' : 'NO')); L.push('Listener connected: ' + (d.connected ? 'YES' : 'NO'));
+    L.push('Launcher apps found: ' + d.launcherApps); L.push('Apps seen via notifications: ' + d.seen); L.push('Chosen apps: ' + d.allowed);
+    L.push('Forwarded: ' + d.delivered + ' / Ignored (not chosen): ' + d.dropped);
+    if (d.error) L.push('ERROR: ' + d.error);
+    if (!d.access) L.push('=> Turn on notification access (App info > ⋮ > Allow restricted settings).');
+    else if (!d.connected) L.push('=> Access is on but the listener is not connected: switch access off and on, or restart the phone.');
+    else if (!d.allowed) L.push('=> Choose at least one app.');
+    else if (!d.delivered && !d.dropped) L.push('=> Connected. Send yourself a message and tap this button again.');
+    const b = $('#diagBox'); b.textContent = L.join('\n'); b.hidden = false;
   });
   $('#inboxClear').addEventListener('click', () => { inbox = []; jset('hud.inbox', inbox); schedule(); });
   document.addEventListener('visibilitychange', () => { if (!document.hidden) schedule(); });
@@ -2537,7 +2555,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.7.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.7.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
