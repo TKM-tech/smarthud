@@ -524,6 +524,20 @@ input[type=search], input[type=time], input.txt { width: 100%; padding: 10px 12p
         <input type="range" id="r_breakMin" min="15" max="240" step="15" value="90"></div>
     </div>
 
+    <div class="card" id="hudCard">
+      <h2>شاشة النظارة (HUD)</h2>
+      <div class="sw"><label for="s_mirror"><b>عكس الصورة (مرآة)</b><span class="muted small">شغّله إذا الكتابة طالعة مقلوبة بالقزازة العاكسة</span></label><input type="checkbox" id="s_mirror"></div>
+      <div class="field"><div class="row"><b>عرض الصورة</b><span class="num" id="o_hudW">100%</span></div>
+        <input type="range" id="r_hudW" min="60" max="100" step="5" value="100"><span class="muted small">صغّره إذا أطراف الشاشة ما بتبين من العدسة</span></div>
+      <div class="field"><div class="row"><b>معايرة البطارية</b><span class="num" id="battMv">—</span></div>
+        <div class="ai-row"><input type="number" class="txt" id="calIn" step="0.01" min="3" max="4.3" placeholder="4.05" inputmode="decimal" style="flex:1 1 120px"><button class="btn" id="calBtn">معايرة</button></div>
+        <span class="muted small">قيس البطارية بالمالتيميتر واكتب الفولت هون</span></div>
+      <div class="field"><b>مؤقت على النظارة</b>
+        <div class="btns"><button class="btn" data-timer="5">5</button><button class="btn" data-timer="10">10</button><button class="btn" data-timer="20">20</button><button class="btn danger" data-timer="0">إلغاء</button></div></div>
+      <div class="sw"><label for="swAutoRide"><b>تسجيل الرحلة تلقائياً</b><span class="muted small">يبدأ لما تتحرك ويوقف بعد 5 دقائق وقوف</span></label><input type="checkbox" id="swAutoRide"></div>
+      <div class="notice warn small" id="hudNote" hidden>هالإعدادات بحاجة فيرموير 3.0 على النظارة</div>
+    </div>
+
     <div class="card">
       <div class="sw"><label for="s_buzzer"><b>الصوت (Buzzer)</b></label><input type="checkbox" id="s_buzzer"></div>
       <div class="sw"><label for="s_autoNight"><b>الوضع الليلي التلقائي</b><span class="muted small">من 21:00 إلى 06:00</span></label><input type="checkbox" id="s_autoNight"></div>
@@ -718,6 +732,7 @@ const SVC = 'a3c81000-5d4e-4f1a-9b2c-7e6d5c4b3a21';
 const NAV_U = 'a3c81001-5d4e-4f1a-9b2c-7e6d5c4b3a21';
 const CFG_U = 'a3c81002-5d4e-4f1a-9b2c-7e6d5c4b3a21';
 const NOT_U = 'a3c81003-5d4e-4f1a-9b2c-7e6d5c4b3a21';
+const EVT_U = 'a3c81004-5d4e-4f1a-9b2c-7e6d5c4b3a21';   // firmware 3.0: events from the glasses
 const BLE_NAME = 'Smart_HUD_Glasses';
 
 const MAN_AR = ['لا مسار', 'استمر مباشرة', 'انعطف يسار', 'انعطف يمين', 'يسار خفيف', 'يمين خفيف', 'يسار حاد',
@@ -857,6 +872,14 @@ Object.assign(NLD, {
   'كلمات محظورة': 'Geblokkeerde woorden', 'أي إشعار فيه هالكلمات ما بينبعت': 'Meldingen met deze woorden worden niet doorgestuurd',
   'تفعيل إشعارات الهاتف': 'Telefoonmeldingen inschakelen', 'التطبيق بيقرأ بس إشعارات التطبيقات اللي بتختارها. الباقي بيتجاهله من الأساس.': 'De app leest alleen meldingen van de apps die jij kiest. De rest wordt direct genegeerd.',
   'فحص المشاكل': 'Problemen controleren', 'آخر الإشعارات': 'Laatste meldingen', 'ابحث عن تطبيق…': 'Zoek een app…', 'التطبيقات الشائعة': 'Populaire apps', 'إلغاء الكل': 'Alles wissen', 'إغلاق': 'Sluiten',
+});
+
+Object.assign(NLD, {
+  'شاشة النظارة (HUD)': 'Brilscherm (HUD)', 'عكس الصورة (مرآة)': 'Beeld spiegelen', 'شغّله إذا الكتابة طالعة مقلوبة بالقزازة العاكسة': 'Zet aan als de tekst gespiegeld is in het glaasje (beamsplitter)',
+  'عرض الصورة': 'Beeldbreedte', 'صغّره إذا أطراف الشاشة ما بتبين من العدسة': 'Maak kleiner als de randen van het scherm niet zichtbaar zijn door de lens',
+  'معايرة البطارية': 'Batterij kalibreren', 'معايرة': 'Kalibreren', 'قيس البطارية بالمالتيميتر واكتب الفولت هون': 'Meet de batterij met een multimeter en vul de spanning (V) hier in',
+  'مؤقت على النظارة': 'Timer op de bril (min)', 'تسجيل الرحلة تلقائياً': 'Rit automatisch opnemen', 'يبدأ لما تتحرك ويوقف بعد 5 دقائق وقوف': 'Start als je gaat rijden en stopt na 5 minuten stilstaan',
+  'هالإعدادات بحاجة فيرموير 3.0 على النظارة': 'Deze instellingen hebben firmware 3.0 op de bril nodig',
 });
 function tx(s) {
   if (LANG === 'ar' || typeof s !== 'string') return s;
@@ -1194,6 +1217,9 @@ function actDo(a) {
     case 'park_go': return parkGo();
     case 'weather': wxLoad(true); return true;
     case 'voice_guidance': store('hud.voice', v ? '1' : '0'); schedule(); return true;
+    case 'timer': setTimer(n); return true;
+    case 'mirror': setCfg('mirror', !!v); return true;
+    case 'hud_width': setCfg('hudW', clamp(Math.round(n / 5) * 5, 60, 100)); return true;
     default: return false;
   }
 }
@@ -1232,6 +1258,7 @@ function localParse(t) {
   else if (/(geluid|buzzer|sound|صوت)/.test(s)) out.push({ action: 'buzzer', value: !/(uit|off|mute|اطفي|الغ|بدون)/.test(s) });
   else if (/(eco|zuinig|توفير)/.test(s)) out.push({ action: 'eco', value: /(uit|off|اطفي)/.test(s) ? 0 : /(altijd|always|دائم)/.test(s) ? 2 : 1 });
   else if (/(nacht|night|ليل)/.test(s)) out.push({ action: 'autonight', value: !/(uit|off|الغ)/.test(s) });
+  else if (/(timer|wekker|مؤقت|تايمر)/.test(s)) out.push({ action: 'timer', value: /(stop|uit|off|الغ|وقف)/.test(s) ? 0 : (num() || 5) });
   else if (/(tijd|sync|clock|وقت|ساعة)/.test(s)) out.push({ action: 'sync_time' });
   else if (/(stop|einde|beëindig|انه|وقف).*(rit|ride|رحلة)/.test(s)) out.push({ action: 'ride_stop' });
   else if (/(start|begin|ابدأ).*(rit|ride|رحلة)/.test(s)) out.push({ action: 'ride_start' });
@@ -1246,7 +1273,7 @@ const AI_SYSTEM = 'You are the assistant inside "Smart HUD", a companion app for
   'OUTPUT: reply ONLY with compact JSON {"reply":"your answer","actions":[...]}. "reply" can be a full helpful answer (max ~700 characters, plain text, no markdown). Use "actions":[] when no action is needed. Never invent actions. ' +
   'Allowed actions (objects with "action"): brightness{value 5-100}, limit{value km/h, 0=off}, buzzer{value bool}, quiet{value bool}, autonight{value bool}, eco{value 0 off,1 auto,2 always}, theme{value 0-5}, ' +
   'page{value 0 main,1 speed,2 trip,3 clock,4 compass,5 messages,6 stopwatch}, glasses_lang{value 0 NL,1 EN,2 DE,3 FR}, find, beep, sync_time, reset_trip, ' +
-  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}, park_save (remember current position as parking spot), park_go (navigate back to the parking spot), weather (refresh weather), voice_guidance{value bool}. Use the LIVE CONTEXT (weather, ride, navigation, battery) to give useful, concrete answers; for a daily briefing summarise weather, battery, last ride and give one tip.';
+  'message{kind 1 call/2 message/3 info/4 warning, text max 90 chars}, ride_start, ride_stop, nav_stop, navigate{query place or address}, park_save (remember current position as parking spot), park_go (navigate back to the parking spot), weather (refresh weather), voice_guidance{value bool}, timer{value minutes on the glasses, 0 = cancel}, mirror{value bool, mirrored HUD image}, hud_width{value 60-100 percent}. Use the LIVE CONTEXT (weather, ride, navigation, battery) to give useful, concrete answers; for a daily briefing summarise weather, battery, last ride and give one tip.';
 function dominantLang(text) {
   const words = String(text || '').split(/[\s,.;:!?()\[\]"«»،؛؟]+/).filter(Boolean);
   let ar = 0, nl = 0, en = 0;
@@ -1412,7 +1439,7 @@ async function wxLoad(force) {
     const now = Date.now(); let rain = 0;
     hrs.forEach((h, i) => { const tt = new Date(h).getTime(); if (tt >= now - 1800000 && tt <= now + 7200000) rain = Math.max(rain, pr[i] || 0); });
     Object.assign(wx, { t: c.temperature_2m, w: c.wind_speed_10m, code: c.weather_code || 0, rain, ts: Date.now() });
-    wxRainAlert();
+    wxRainAlert(); wxSend();
   } catch (e) { wx.err = true; dlog('weather failed: ' + (e && e.message)); }
   wx.busy = false; schedule();
 }
@@ -1550,6 +1577,83 @@ function aiContext() {
   if (wx.t != null) bits.push('weather ' + Math.round(wx.t) + 'C wind ' + Math.round(wx.w) + ' km/h rain chance ' + wx.rain + '%');
   if (park) bits.push('parking spot saved');
   return bits.join('; ');
+}
+
+
+/* ============================== v2.0: HUD display, events, timer, auto ride ============================== */
+const fw3 = () => ble.cfg.fwMajor >= 3;
+function wxCodeHud(c) { return c === 0 ? 0 : c <= 2 ? 1 : c === 3 ? 2 : c <= 48 ? 6 : (c >= 71 && c <= 77) || c === 85 || c === 86 ? 4 : c >= 95 ? 5 : 3; }
+function wxSend() {
+  if (!ble.connected || !fw3() || wx.t == null) return;
+  const t = clamp(Math.round(wx.t), -60, 60);
+  sendCmd([0x18, t & 0xFF, wxCodeHud(wx.code), clamp(Math.round(wx.rain), 0, 100)]);
+}
+function setTimer(min) {
+  const sec = clamp(Math.round((Number(min) || 0) * 60), 0, 65535);
+  sendCmd([0x1A, sec & 0xFF, sec >> 8]);
+  toast(sec ? (LANG === 'ar' ? 'المؤقت: ' + Math.round(sec / 60) + ' د' : 'Timer: ' + Math.round(sec / 60) + ' min') : (LANG === 'ar' ? 'تم إلغاء المؤقت' : 'Timer gestopt'));
+}
+let ringCtx = null;
+function findPhone() {
+  toast(LANG === 'ar' ? '📱 النظارة عم تدوّر على الموبايل' : '📱 De bril zoekt je telefoon');
+  try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 800]); } catch (e) { /* ignore */ }
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    if (ringCtx) { ringCtx.close(); ringCtx = null; }
+    const ctx = ringCtx = new AC(); const g = ctx.createGain(); g.connect(ctx.destination); g.gain.value = 0.9;
+    for (let i = 0; i < 12; i++) {
+      const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = i % 2 ? 1900 : 2600;
+      o.connect(g); o.start(ctx.currentTime + i * 0.45); o.stop(ctx.currentTime + i * 0.45 + 0.32);
+    }
+    const stop = () => { try { ctx.close(); } catch (e) { /* ignore */ } if (ringCtx === ctx) ringCtx = null; };
+    setTimeout(stop, 6000); document.addEventListener('pointerdown', stop, { once: true });
+  } catch (e) { dlog('ring failed: ' + e); }
+}
+function onGlassesEvent(dv) {
+  if (!dv || dv.byteLength < 1) return;
+  const t = dv.getUint8(0);
+  dlog('glasses event ' + t);
+  if (t === 1) findPhone();
+  else if (t === 3) toast(LANG === 'ar' ? '⏱ خلص المؤقت' : '⏱ Timer klaar');
+}
+function calibrateBattery(volts) {
+  const c = ble.cfg; const mv = Math.round(Number(volts) * 1000);
+  if (!ble.connected || !fw3() || !c.mv || !(mv >= 3000 && mv <= 4300)) { toast(LANG === 'ar' ? 'اكتب فولت بين 3.00 و 4.30' : 'Vul een spanning tussen 3.00 en 4.30 in'); return false; }
+  const k = clamp(Math.round(c.cal * mv / c.mv), 800, 1200);
+  sendCmd([0x19, k & 0xFF, k >> 8]); c.cal = k; c.mv = mv;
+  setTimeout(() => { if (ble.connected) readConfig().then(schedule); }, 1500);
+  toast(LANG === 'ar' ? 'تمت المعايرة' : 'Gekalibreerd'); schedule(); return true;
+}
+const auto = { move: 0, still: 0 };
+function autoRide(speed) {
+  if (store('hud.autoride') !== '1') return;
+  const now = Date.now();
+  if (!ride.active) {
+    auto.move = speed > 1.7 ? auto.move + 1 : 0;                       // > 6 km/h for 8 fixes in a row
+    if (auto.move >= 8) { auto.move = 0; rideStart(); ride.auto = true; auto.still = 0; toast(LANG === 'ar' ? 'بدأ تسجيل الرحلة تلقائياً' : 'Rit automatisch gestart'); }
+  } else if (ride.auto && !ride.paused) {
+    if (speed > 0.8) auto.still = 0; else if (!auto.still) auto.still = now;
+    if (auto.still && now - auto.still > 300000) { auto.still = 0; rideStop(); }
+  }
+}
+function renderHud() {
+  const c = ble.cfg; const ok = ble.connected && fw3();
+  $('#s_mirror').checked = c.mirror; $('#s_mirror').disabled = !ok;
+  const r = $('#r_hudW'); if (document.activeElement !== r) r.value = c.hudW; r.disabled = !ok;
+  $('#o_hudW').textContent = c.hudW + '%';
+  $('#battMv').textContent = ok && c.mv ? (c.mv / 1000).toFixed(2) + ' V' : '—';
+  $('#calBtn').disabled = !ok; $$('[data-timer]').forEach((b) => { b.disabled = !ok; });
+  $('#swAutoRide').checked = store('hud.autoride') === '1';
+  $('#hudNote').hidden = !ble.connected || fw3();
+}
+function bindHud() {
+  $('#s_mirror').addEventListener('change', (e) => setCfg('mirror', e.target.checked));
+  const r = $('#r_hudW');
+  r.addEventListener('input', () => { $('#o_hudW').textContent = r.value + '%'; });
+  r.addEventListener('change', () => setCfg('hudW', Number(r.value)));
+  $('#calBtn').addEventListener('click', () => { if (calibrateBattery($('#calIn').value)) $('#calIn').value = ''; });
+  $$('[data-timer]').forEach((b) => b.addEventListener('click', () => setTimer(Number(b.dataset.timer))));
+  $('#swAutoRide').addEventListener('change', (e) => { store('hud.autoride', e.target.checked ? '1' : '0'); if (e.target.checked && !nav.tracking && !nav.navigating) startTracking(); schedule(); });
 }
 
 /* ============================== phone notifications -> glasses (via ntfy.sh) ============================== */
@@ -1854,11 +1958,11 @@ const ble = {
   status: '', info: '', retryT: null, timeT: null,
   q: [], pumping: false,
   cfg: { brightness: 70, buzzer: true, lang: 0, theme: 0, autoNight: true, limit: 0, breakMin: 90, vehicle: 0,
-         page: 0, eco: 1, quiet: false, fwMajor: 0, fwMinor: 0 }
+         page: 0, eco: 1, quiet: false, fwMajor: 0, fwMinor: 0, mirror: false, hudW: 100, mv: 0, cal: 1000 }
 };
 
 const CMD = { brightness: 0x01, buzzer: 0x02, lang: 0x03, theme: 0x08, limit: 0x09, page: 0x0A,
-  vehicle: 0x0B, breakMin: 0x0D, autoNight: 0x0E, eco: 0x11, quiet: 0x12 };
+  vehicle: 0x0B, breakMin: 0x0D, autoNight: 0x0E, eco: 0x11, quiet: 0x12, mirror: 0x16, hudW: 0x17 };
 
 function bleSupported() { return !!(navigator.bluetooth && (window.isSecureContext || IS_APK)); }
 
@@ -1915,6 +2019,7 @@ async function readConfig() {
       c.autoNight = dv.getUint8(6) !== 0; c.limit = dv.getUint8(7); c.breakMin = dv.getUint8(8);
       c.vehicle = dv.getUint8(9); c.page = dv.getUint8(10);
       if (dv.byteLength >= 13) { c.eco = dv.getUint8(11); c.quiet = dv.getUint8(12) !== 0; }
+      if (dv.byteLength >= 19) { c.mirror = dv.getUint8(13) !== 0; c.hudW = dv.getUint8(14); c.mv = dv.getUint16(15, true); c.cal = dv.getUint16(17, true); }
     }
   } catch (e) { console.warn('config read failed', e); }
 }
@@ -1963,11 +2068,17 @@ async function link() {
       await bc.startNotifications();
       bc.addEventListener('characteristicvaluechanged', (ev) => { ble.battery = ev.target.value.getUint8(0); schedule(); });
     } catch (e) { ble.battery = null; }
+    try {                                            // firmware 3.0: button events (find my phone, timer done)
+      const ev = await svc.getCharacteristic(EVT_U);
+      await ev.startNotifications();
+      ev.addEventListener('characteristicvaluechanged', (e) => onGlassesEvent(e.target.value));
+    } catch (e) { /* older firmware: no events */ }
     ble.connected = true;
     ble.status = tx('متصل بالنظارة');
     ble.busy = false;
     await readConfig();
     syncTime();
+    wxSend();
     clearInterval(ble.timeT);
     ble.timeT = setInterval(syncTime, 30 * 60 * 1000);
     schedule();
@@ -2153,6 +2264,7 @@ function sendGps(heading, alt) {
 function onPosition(p, speed, heading, alt) {
   nav.pos = p;
   nav.speedMps = (!isFinite(speed) || speed < 0) ? 0 : speed;
+  autoRide(nav.speedMps);
   rideFix(p, nav.speedMps, alt);
   if (!wx.ts && !wx.busy) wxLoad(false);
   sendGps(heading, alt);
@@ -2555,7 +2667,7 @@ function render() {
   $('#offline').hidden = ble.connected;
   $$('[data-act]').forEach(b => { b.disabled = !ble.connected; });
   $('#btnOdo').disabled = !ble.connected;
-  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 1.7.1 · Firmware ${c.fwMajor}.${c.fwMinor}`;
+  $('#verLine').textContent = `Smart HUD ${IS_APK ? 'App' : 'Web'} 2.0.0 · Firmware ${c.fwMajor}.${c.fwMinor}`;
 
   // settings
   for (const k of ['brightness', 'limit', 'breakMin']) {
@@ -2592,7 +2704,7 @@ function render() {
 
   if (curTab === 'ride') renderRide();
   if (curTab === 'nav') { renderFavs(); renderPins(); renderPark(); }
-  if (curTab === 'set') { renderNtfy(); renderExtras(); renderApk(); }
+  if (curTab === 'set') { renderNtfy(); renderExtras(); renderApk(); renderHud(); }
   apkKeep();
   if (curTab === 'home') { renderHero(); renderAiChips(); renderWx(); renderInbox(); }
   $('#aiMode').textContent = store('hud.aikey') ? 'AI: ' + ((store('hud.aikey') || '').indexOf('sk-or-') === 0 ? 'OpenRouter · ' + (store('hud.aimodel') || 'auto (gratis)') : 'Claude') : tx('offline commando\'s');
@@ -2607,6 +2719,7 @@ let lastBleSt = '', lastNavSt = '';
 
 function bind() {
   bindExtras();
+  bindHud();
   bindApk();
   $$('.tab-btn').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
