@@ -32,7 +32,7 @@ jobs:
         run: |
           ver=$(grep -o "'App' : 'Web'} [0-9.]*" index.html | grep -o '[0-9.]*$' | head -1)
           echo "index.html on GitHub is version: $ver"
-          if [ "$ver" != "1.7.1" ]; then echo "ERROR: index.html in the repo root is OLD. Upload the new index.html from smart_hud_pwa.zip (repo root), then run again."; exit 1; fi
+          if [ "$ver" != "2.0.0" ]; then echo "ERROR: index.html in the repo root is OLD. Upload the new index.html from smart_hud_pwa.zip (repo root), then run again."; exit 1; fi
           echo "VER=$ver" >> "$GITHUB_ENV"
 
       - name: Create Android project
@@ -86,8 +86,8 @@ jobs:
                   applicationId 'com.smarthud.glasses'
                   minSdk 26
                   targetSdk 34
-                  versionCode 171
-                  versionName '1.7.1'
+                  versionCode 200
+                  versionName '2.0.0'
               }
 
               buildTypes {
